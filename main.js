@@ -204,7 +204,7 @@ async function execute(message, serverQueue) {
                     }
                     songs.push(song)
                 })
-                message.channel.send(`Queued \*\*${songs.length}\*\* songs`)
+                message.channel.send(`Queued \*\*${songs.length}\*\* songs ✅`)
             }
         } else if (source === 'so'){
             const so = await playDL.soundcloud(args[1])
@@ -230,7 +230,7 @@ async function execute(message, serverQueue) {
                     }
                     songs.push(song)
                 })
-                message.channel.send(`Queued \*\*${songs.length}\*\* songs`)
+                message.channel.send(`Queued \*\*${songs.length}\*\* songs ✅`)
             }
         } else if (source === 'sp'){
             return message.channel.send("Spotify is currently not supported. Refer to https://play-dl.github.io/modules.html#stream for more information.")
@@ -399,9 +399,11 @@ async function play(guild, song){
         // don't print anything
     } else {
         if (song.seek > 0){
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`);
+            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`)
+                .then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
         } else {
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
+            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`)
+                .then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         }
         //showQueue(serverQueue);
     }
@@ -512,7 +514,7 @@ function loopSong(message, serverQueue){
    
 }
 
-function showQueue(message,serverQueue){
+function showQueue(serverQueue){
     // if(!message.member.voice.channel){
     //     return message.channel.send("You have to be in a voice channel to view the queue.");
     // }
@@ -523,15 +525,17 @@ function showQueue(message,serverQueue){
     let nowPlaying = serverQueue.songs[0];
     let msg = `Now playing: ${nowPlaying.title}\n----------------------------\n`
     let length = Math.min(serverQueue.songs.length, 11) 
+    let duration = nowPlaying.duration;
     for (var i = 1; i < length; i++){
         if (serverQueue.songs[i].seek > 0){
             msg += `${i}. ${serverQueue.songs[i].title} seek: ${serverQueue.songs[i].seekTime.minutes}:${serverQueue.songs[i].seekTime.seconds}\n`
+            duration = nowPlaying.duration - nowPlaying.seek;
         } else {
             msg += `${i}. ${serverQueue.songs[i].title}\n`;
         }
     }
 
-    serverQueue.textChannel.send('```' + msg + '```');
+    serverQueue.textChannel.send('```' + msg + '```').then(msg => setTimeout(() => msg.delete, duration*1000));
 }
 
 function pause(message, serverQueue){
