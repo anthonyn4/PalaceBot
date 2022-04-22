@@ -2,8 +2,8 @@
     Features to add:
     !skip {n} skips max({n}, queue.length) songs in the queue 
     Remove individual songs from queue
-    Seek to a given time 
-    YouTube playlist support
+    Seek to a given time ✅
+    YouTube playlist support ✅
 */
 
 // serverQueue.textChannel.send() is used when an instance of the ServerQueue already exists, 
@@ -191,6 +191,7 @@ async function execute(message, serverQueue) {
             } else if (type === 'playlist') {
                 const playlist = await playDL.playlist_info(args[1], {incomplete: true}) //parse youtube playlist ignoring hidden videos
                 const videos = await playlist.all_videos()
+                console.log(`Fetched ${playlist.total_videos} videos from the playlist`)
                 videos.forEach(function (video) {
                     song = {
                         title: video.title,
@@ -203,6 +204,7 @@ async function execute(message, serverQueue) {
                     }
                     songs.push(song)
                 })
+                message.channel.send(`Queued \*\*${songs.length}\*\* songs`)
             }
         } else if (source === 'so'){
             const so = await playDL.soundcloud(args[1])
@@ -217,6 +219,7 @@ async function execute(message, serverQueue) {
                 songs.push(song)
             } else if (type === 'playlist'){
                 const tracks = await so.all_tracks()
+                console.log(`Fetched ${so.total_tracks} tracks from the playlist`)
                 tracks.forEach(function (track) {
                     song = {
                         title: track.name,
@@ -227,6 +230,7 @@ async function execute(message, serverQueue) {
                     }
                     songs.push(song)
                 })
+                message.channel.send(`Queued \*\*${songs.length}\*\* songs`)
             }
         } else if (source === 'sp'){
             return message.channel.send("Spotify is currently not supported. Refer to https://play-dl.github.io/modules.html#stream for more information.")
@@ -503,7 +507,7 @@ function loopSong(message, serverQueue){
         default:
             //console.log(`Attempt to loop failed.`);
             //message.channel.send(`Specify the loop parameter. (!loop <this/all/off>`);
-            return message.channel.send('!loop to loop the queue, !loop off to disable the loop.')
+            return message.channel.send('!loop to loop the queue, !loop off to disable the loop. 🤓')
     }
    
 }
@@ -579,7 +583,7 @@ function help(message){
     !pause -- pause the current song
     !resume -- resume the current song 
     !skip -- skips over the current song 
-    !stop -- removes the bot and stops it from playing  
+    !stop -- stops the bot from playing  
     !queue -- shows all songs in the queue 
     !clear -- purges all songs in the queue  
     !loop -- repeats all of the songs in the queue (!loop off to disable the loop)\n
