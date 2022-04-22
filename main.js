@@ -102,7 +102,7 @@ client.on('messageCreate', async message =>{
         //     break;
         default:
            // message.channel.send("You need to enter a valid command!");
-            help(message, serverQueue);
+            help(message);
             break;
     }
     
@@ -150,10 +150,12 @@ async function execute(message, serverQueue) {
         return message.channel.send("❌ Failed to validate URL or search.");
     } else if (check === 'search') {
         let query = message.content.substring(message.content.indexOf(' '),timeToSeek ? message.content.lastIndexOf(' ') : message.content.length).trim();
-        console.log(`Searching for '${query}' 🔎`)
+        console.log(`Searching for '${query}' 🔎`);
+        const searchMsg = await message.channel.send(`Searching for '${query}' 🔎`);
         const search = await playDL.search(query, {
             limit: 1
         })
+        searchMsg.delete();
         //console.log(search)
         if (search.length == 0){    
             return message.channel.send(`No results found for  '${query}'  😢`);
@@ -436,7 +438,7 @@ function clear(message, serverQueue){
     //queue.delete(message.guild.id);
 
     console.log(`Cleared queue.`);
-    return message.channel.send("Cleared queue. ✔️");
+    return message.channel.send("Cleared queue. ✅");
     //player.stop();
 }
 
@@ -567,9 +569,13 @@ function stop(message, serverQueue) {
     serverQueue.player.stop();
 }
 
-function help(message, serverQueue){
+/**
+ * Displays the list of commands
+ * @param {*} message  
+ */
+function help(message){
     const commands = `
-    !play -- search for a song or check a YouTube URL  
+    !play <query|url> <seek> -- search for a song or type a YouTube URL  
     !pause -- pause the current song
     !resume -- resume the current song 
     !skip -- skips over the current song 
@@ -577,17 +583,23 @@ function help(message, serverQueue){
     !queue -- shows all songs in the queue 
     !clear -- purges all songs in the queue  
     !loop -- repeats all of the songs in the queue (!loop off to disable the loop)\n
-    To view these commands again, check !help 
+    To view these commands again, type !help 
     `
     return message.channel.send('```' + commands + '```')
 }
 
+/**
+ * Given a number, parses it into the form of mm:ss
+ * @param {number} input number to parse
+ * @returns {object} object containing the parsed data
+ */
 function parse(input){
     let minutes = Math.floor(input/60);
     let seconds = input%60 < 10 ? '0' + input%60 : input%60;
     //return [minutes, seconds];
     return {minutes: minutes, seconds: seconds};
 }
+
 // function seek(input) {
 //     // const args = message.content.split(" ");
 //     // if(!message.member.voice.channel){
