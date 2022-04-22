@@ -162,9 +162,9 @@ async function execute(message, serverQueue) {
                 title: search[0].title,
                 url: search[0].url,
                 duration: search[0].durationInSec,
-                minutes: Math.floor(search[0].durationInSec/60),
-                seconds: search[0].durationInSec%60 < 10 ? '0' + search[0].durationInSec%60 : search[0].durationInSec%60,
+                durationTime: parse(search[0].durationInSec),
                 seek: timeToSeek,
+                seekTime: parse(timeToSeek),
                 source: 'yt'
             }
             songs.push(song)
@@ -180,9 +180,9 @@ async function execute(message, serverQueue) {
                     title: video.video_details.title,
                     url: video.video_details.url,
                     duration: video.video_details.durationInSec,
-                    minutes: Math.floor(video.video_details.durationInSec/60),
-                    seconds: video.video_details.durationInSec%60 < 10 ? '0' + video.video_details.durationInSec%60 : video.video_details.durationInSec%60,
+                    durationTime: parse(video.video_details.durationInSec),
                     seek: timeToSeek,
+                    seekTime: parse(timeToSeek),
                     source: 'yt'
                 }
                 songs.push(song)
@@ -194,9 +194,9 @@ async function execute(message, serverQueue) {
                         title: video.title,
                         url: video.url,
                         duration: video.durationInSec,
-                        minutes: Math.floor(video.durationInSec/60),
-                        seconds: video.durationInSec%60 < 10 ? '0' + video.durationInSec%60 : video.durationInSec%60,
+                        durationTime: parse(video.durationInSec),
                         seek: timeToSeek,
+                        seekTime: parse(timeToSeek),
                         source: 'yt'
                     }
                     songs.push(song)
@@ -209,8 +209,7 @@ async function execute(message, serverQueue) {
                     title: so.name,
                     url: so.url,
                     duration: so.durationInSec,
-                    minutes: Math.floor(so.durationInSec/60),
-                    seconds: so.durationInSec%60 < 10 ? '0' + so.durationInSec%60 : so.durationInSec%60,
+                    durationTime: parse(so.durationInSec),
                     source: 'so'
                 }
                 songs.push(song)
@@ -221,8 +220,7 @@ async function execute(message, serverQueue) {
                         title: track.name,
                         url: track.url,
                         duration: track.duration,
-                        minutes: Math.floor(track.duration/60),
-                        seconds: track.duration%60 < 10 ? '0' + track.duration%60 : track.duration%60,
+                        durationTime: parse(track.duration),
                         source: 'so'
                     }
                     songs.push(song)
@@ -255,10 +253,9 @@ async function execute(message, serverQueue) {
         let maxDuration = song.duration-2;
         if (timeToSeek > maxDuration){ 
             //console.log(maxDuration)
-            let minutes = Math.floor(maxDuration/60);
-            let seconds = maxDuration%60;
+            let maxTime = parse(maxDuration);
             console.log(`Seek exceeded song limits, requested ${timeToSeek}, max is ${maxDuration}`);
-            return message.channel.send(`❌ Seeking beyond limits. <0-${minutes}:${seconds}>`);
+            return message.channel.send(`❌ Seeking beyond limits. <0-${maxTime.minutes}:${maxTime.seconds}>`);
         }
     }
 
@@ -308,18 +305,18 @@ async function execute(message, serverQueue) {
         }
 
     } else {
-        serverQueue.seek = timeToSeek;
+        //serverQueue.seek = timeToSeek;
         serverQueue.songs.push(song);
         //if the queue exists and it is the only song in the queue, play it
         if (serverQueue.songs.length == 1) {
             play(message.guild, serverQueue.songs[0]);
         } else {
-            if (serverQueue.seek > 0){
-                console.log(`Added ${song.title} \`${song.minutes}:${song.seconds}\` to the queue seeking to ${song.seek}`);
-                return message.channel.send(`\*\*${song.title}\*\* \`${song.minutes}:${song.seconds}\` has been added to the queue seeking to ${song.seek}. ✔️`);
+            if (song.seek > 0){
+                console.log(`Added ${song.title} \`${song.durationTime.minutes}:${song.durationTime.seconds}\` to the queue seeking to ${song.seekTime.minutes}:${song.seekTime.seconds}`);
+                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. ✅`);
             } else {
-                console.log(`Added ${song.title} to the queue. {${song.minutes}:${song.seconds}}`);
-                return message.channel.send(`\*\*${song.title}\*\* \`${song.minutes}:${song.seconds}\` has been added to the queue. ✔️`);
+                console.log(`Added ${song.title} to the queue. {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
+                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue. ✅`);
             }
 
             //showQueue(serverQueue);
@@ -390,11 +387,16 @@ async function play(guild, song){
         play(guild, serverQueue.songs[0]);
     })
 
-    console.log(`Playing ${song.title} {${song.minutes}:${song.seconds}}`);
+
+    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
     if (serverQueue.loop == true) {
         // don't print anything
     } else {
-        serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.minutes}:${song.seconds}\` 🎵`);
+        if (song.seek > 0){
+            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`);
+        } else {
+            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
+        }
         //showQueue(serverQueue);
     }
 }
@@ -516,8 +518,8 @@ function showQueue(message,serverQueue){
     let msg = `Now playing: ${nowPlaying.title}\n----------------------------\n`
     let length = Math.min(serverQueue.songs.length, 11) 
     for (var i = 1; i < length; i++){
-        if (serverQueue.seek > 0){
-            msg += `${i}. ${serverQueue.songs[i].title} seek: ${serverQueue.songs[i].seek}\n`
+        if (serverQueue.songs[i].seek > 0){
+            msg += `${i}. ${serverQueue.songs[i].title} seek: ${serverQueue.songs[i].seekTime.minutes}:${serverQueue.songs[i].seekTime.seconds}\n`
         } else {
             msg += `${i}. ${serverQueue.songs[i].title}\n`;
         }
@@ -580,6 +582,12 @@ function help(message, serverQueue){
     return message.channel.send('```' + commands + '```')
 }
 
+function parse(input){
+    let minutes = Math.floor(input/60);
+    let seconds = input%60 < 10 ? '0' + input%60 : input%60;
+    //return [minutes, seconds];
+    return {minutes: minutes, seconds: seconds};
+}
 // function seek(input) {
 //     // const args = message.content.split(" ");
 //     // if(!message.member.voice.channel){
