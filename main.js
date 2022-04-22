@@ -92,7 +92,7 @@ client.on('messageCreate', async message =>{
             loopSong(message, serverQueue);
             break;
         case 'queue':
-            showQueue(message, serverQueue);
+            showQueue(serverQueue);
             break;
         case 'stop':
             stop(message,serverQueue);
@@ -311,8 +311,8 @@ async function execute(message, serverQueue) {
         }
 
     } else {
-        //serverQueue.seek = timeToSeek;
-        serverQueue.songs.push(song);
+        serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue
+        //console.log(serverQueue.songs.length);
         //if the queue exists and it is the only song in the queue, play it
         if (serverQueue.songs.length == 1) {
             play(message.guild, serverQueue.songs[0]);
