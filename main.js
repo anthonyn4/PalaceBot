@@ -535,7 +535,7 @@ function showQueue(serverQueue){
         }
     }
 
-    serverQueue.textChannel.send('```' + msg + '```').then(msg => setTimeout(() => msg.delete, duration*1000));
+    serverQueue.textChannel.send('```' + msg + '```').then(msg => setTimeout(() => msg.delete(), duration*1000));
 }
 
 function pause(message, serverQueue){
