@@ -395,18 +395,15 @@ async function play(guild, song){
 
 
     console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
-    if (serverQueue.loop == true) {
-        // don't print anything
+    if (song.seek > 0){
+        serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`);
+            //.then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
     } else {
-        if (song.seek > 0){
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`)
-                .then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
-        } else {
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`)
-                .then(msg => setTimeout(() => msg.delete(), song.duration*1000));
-        }
-        //showQueue(serverQueue);
+        serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
+            //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
     }
+    //showQueue(serverQueue);
+    
 }
 
 function skip(message, serverQueue){
