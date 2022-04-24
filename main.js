@@ -11,7 +11,7 @@
 
 //connection to discord
 const Discord = require('discord.js');
-const {Client, Intents} = require('discord.js');
+const {Client, Intents, MessageEmbed, MessageAttachment} = require('discord.js');
 const {
     prefix,
     token,
@@ -24,6 +24,7 @@ const playDL = require('play-dl');
 
 const { NoSubscriberBehavior, getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
 
+const logo = new MessageAttachment('../assets/pb.png');
 const queue = new Map(); //map of guild ID and its respective queue
 let timeoutID = undefined;
 
@@ -105,7 +106,7 @@ client.on('messageCreate', async message =>{
             help(message);
             break;
     }
-    
+    message.delete();
 });
 
 
@@ -167,8 +168,10 @@ async function execute(message, serverQueue) {
                 durationTime: parse(search[0].durationInSec),
                 seek: timeToSeek,
                 seekTime: parse(timeToSeek),
-                source: 'yt'
+                source: 'yt',
+                thumbnail: search[0].thumbnails[0].url
             }
+            console.log(song.thumbnail);
             songs.push(song)
         }
     } else {
@@ -395,15 +398,15 @@ async function play(guild, song){
 
 
     console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
-    if (song.seek > 0){
-        serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`);
-            //.then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
-    } else {
-        serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
-            //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
-    }
-    //showQueue(serverQueue);
-    
+    const songEmbed = new MessageEmbed()
+        .setColor('#0099ff')
+        .setAuthor({name: `${song.title} | ${song.durationTime.minutes}:${song.durationTime.seconds}`, iconURL: 'attachment://pb.png', url: song.url})
+        .setImage(song.thumbnail)
+        .setFooter({text: `${serverQueue.songs.length} songs in the queue`});
+    // if (song.seek > 0) {
+    //     songEmbed.setDescription(`Seeked to ${song.seekTime.minutes}:${song.seekTime.seconds}`)
+    // }
+    serverQueue.textChannel.send({embeds: [songEmbed], files: ['./assets/pb.png']});
 }
 
 function skip(message, serverQueue){
@@ -590,7 +593,7 @@ function help(message){
     !loop -- repeats all of the songs in the queue (!loop off to disable the loop)\n
     To view these commands again, type !help 
     `
-    return message.channel.send('```' + commands + '```')
+    message.channel.send('```' + commands + '```').then(msg => setTimeout(() => msg.delete(), 10*1000));
 }
 
 /**
