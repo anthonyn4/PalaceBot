@@ -168,10 +168,9 @@ async function execute(message, serverQueue) {
                 durationTime: parse(search[0].durationInSec),
                 seek: timeToSeek,
                 seekTime: parse(timeToSeek),
-                source: 'yt',
-                thumbnail: search[0].thumbnails[0].url
+                thumbnail: search[0].thumbnails[0].url,
+                source: 'yt'
             }
-            console.log(song.thumbnail);
             songs.push(song)
         }
     } else {
@@ -188,6 +187,7 @@ async function execute(message, serverQueue) {
                     durationTime: parse(video.video_details.durationInSec),
                     seek: timeToSeek,
                     seekTime: parse(timeToSeek),
+                    thumbnail: video.video_details.thumbnails[0].url,
                     source: 'yt'
                 }
                 songs.push(song)
@@ -203,6 +203,7 @@ async function execute(message, serverQueue) {
                         durationTime: parse(video.durationInSec),
                         seek: timeToSeek,
                         seekTime: parse(timeToSeek),
+                        thumbnail: video.thumbnails[0].url,
                         source: 'yt'
                     }
                     songs.push(song)
@@ -217,6 +218,7 @@ async function execute(message, serverQueue) {
                     url: so.url,
                     duration: so.durationInSec,
                     durationTime: parse(so.durationInSec),
+                    thumbnail: so.thumbnail,
                     source: 'so'
                 }
                 songs.push(song)
@@ -229,6 +231,7 @@ async function execute(message, serverQueue) {
                         url: track.url,
                         duration: track.duration,
                         durationTime: parse(track.duration),
+                        thumbnail: track.thumbnail,
                         source: 'so'
                     }
                     songs.push(song)
@@ -445,7 +448,6 @@ function clear(message, serverQueue){
 
     console.log(`Cleared queue.`);
     return message.channel.send("Cleared queue. ✅");
-    //player.stop();
 }
 
 
