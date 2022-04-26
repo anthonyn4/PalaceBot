@@ -319,10 +319,10 @@ async function execute(message, serverQueue) {
         } else {
             if (song.seek > 0){
                 console.log(`Added ${song.title} \`${song.durationTime.minutes}:${song.durationTime.seconds}\` to the queue seeking to ${song.seekTime.minutes}:${song.seekTime.seconds}`);
-                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. ✅`);
+                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
             } else {
                 console.log(`Added ${song.title} to the queue. {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
-                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue. ✅`);
+                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue. `);
             }
 
             //showQueue(serverQueue);
@@ -388,6 +388,9 @@ async function play(guild, song){
             if (serverQueue.loop === true){
                 serverQueue.keep = true;    //reset keep flag after skipping in a loop
             }
+            if (serverQueue.songs.length == 0){
+                serverQueue.loop = false;   //if you skip the last song in a looped queue, turn off the loop
+            }
         }
         //serverQueue.seek = 0;   //reset any seek option after playing
         play(guild, serverQueue.songs[0]);
@@ -399,11 +402,11 @@ async function play(guild, song){
         // don't print anything
     } else {
         if (song.seek > 0){
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`)
-                .then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
+            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`);
+                //.then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
         } else {
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`)
-                .then(msg => setTimeout(() => msg.delete(), song.duration*1000));
+            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
+                //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         }
         //showQueue(serverQueue);
     }
@@ -583,7 +586,7 @@ function stop(message, serverQueue) {
  */
 function help(message){
     const commands = `
-    !play <query|url> <seek> -- search for a song or type a YouTube URL  
+    !play <query|url> <seek> -- search for a song or enter a YouTube URL  
     !pause -- pause the current song
     !resume -- resume the current song 
     !skip -- skips over the current song 
@@ -593,7 +596,7 @@ function help(message){
     !loop -- repeats all of the songs in the queue (!loop off to disable the loop)\n
     To view these commands again, type !help 
     `
-    return message.channel.send('```' + commands + '```')
+    message.channel.send('```' + commands + '```').then(msg => setTimeout(() => msg.delete(), 10*1000));
 }
 
 /**
