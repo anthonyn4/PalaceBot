@@ -318,11 +318,11 @@ async function execute(message, serverQueue) {
             play(message.guild, serverQueue.songs[0]);
         } else {
             if (song.seek > 0){
-                console.log(`Added ${song.title} \`${song.durationTime.minutes}:${song.durationTime.seconds}\` to the queue seeking to ${song.seekTime.minutes}:${song.seekTime.seconds}`);
-                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
+                console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue seeking to ${song.seekTime.minutes}:${song.seekTime.seconds}`);
+                return message.channel.send(`\*\*${song.title}\*\* {${song.durationTime.minutes}:${song.durationTime.seconds}} has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
             } else {
                 console.log(`Added ${song.title} to the queue. {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
-                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue. `);
+                return message.channel.send(`\*\*${song.title}\*\* {${song.durationTime.minutes}:${song.durationTime.seconds}} has been added to the queue. `);
             }
 
             //showQueue(serverQueue);
@@ -344,6 +344,10 @@ async function play(guild, song){
             timeoutID = undefined;  //after timeout goes off, reset timeout value.
         }, 300 * 1000);
         console.log(`Timeout ${timeoutID} set.`);
+        if (serverQueue.loop == true){
+            serverQueue.loop = false;   //if there is no song to be played, disable the loop, no point looping an empty queue
+            console.log('Disabled the loop.');
+        }
         return;
     }
     
@@ -388,16 +392,13 @@ async function play(guild, song){
             if (serverQueue.loop === true){
                 serverQueue.keep = true;    //reset keep flag after skipping in a loop
             }
-            if (serverQueue.songs.length == 0){
-                serverQueue.loop = false;   //if you skip the last song in a looped queue, turn off the loop
-            }
         }
         //serverQueue.seek = 0;   //reset any seek option after playing
         play(guild, serverQueue.songs[0]);
     })
 
 
-    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
+    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
     if (serverQueue.loop == true) {
         // don't print anything
     } else {
@@ -465,11 +466,16 @@ function loopSong(message, serverQueue){
     if (args.length == 1){
         //console.log(`Loop parameter not specified. Loop not executed.`);
         //return message.channel.send(`Specify the loop parameter. (!loop <this/all/off>`);
-        serverQueue.loop = true;    //loop the queue
-        serverQueue.keep = true;    //and keep the current song 
-        console.log(`Looping the queue.`);
+        serverQueue.loop = !serverQueue.loop;    //loop the queue
+        serverQueue.keep = !serverQueue.keep;    //and keep the current song 
+        if (serverQueue.loop){
+            console.log(`Looping the queue.`);
+            return message.channel.send('⚡Loop **ACTIVATED**🌩️');
+        } else {
+            console.log('Disabled the loop.');
+            return message.channel.send('📴Loop **DEACTIVATED**😥');
+        }
         //return message.channel.send('Looping the queue.');
-        return message.channel.send('⚡Loop **ACTIVATED**🌩️');
     }
 
     let check = args[1].toLowerCase();
@@ -501,7 +507,7 @@ function loopSong(message, serverQueue){
         */
         case 'off':
             if (!serverQueue.loop) {
-               return message.channel.send(`❌ There is no loop to disable.`);
+               return message.channel.send(`❌ The loop is already off.`);
             } else {
                 serverQueue.loop = false;
                 console.log(`Turned off looping.`);
