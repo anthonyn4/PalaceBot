@@ -2,6 +2,7 @@
     Features to add:
     !skip {n} skips max({n}, queue.length) songs in the queue 
     Remove individual songs from queue
+    Autoplay related songs
     Seek to a given time ✅
     YouTube playlist support ✅
 */
@@ -88,6 +89,7 @@ client.on('messageCreate', async message =>{
         case 'resume':
             resume(message, serverQueue);
             break;
+        case 'repeat':
         case 'loop':
             loopSong(message, serverQueue);
             break;
@@ -319,10 +321,10 @@ async function execute(message, serverQueue) {
         } else {
             if (song.seek > 0){
                 console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue seeking to ${song.seekTime.minutes}:${song.seekTime.seconds}`);
-                return message.channel.send(`\*\*${song.title}\*\* {${song.durationTime.minutes}:${song.durationTime.seconds}} has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
+                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
             } else {
                 console.log(`Added ${song.title} to the queue. {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
-                return message.channel.send(`\*\*${song.title}\*\* {${song.durationTime.minutes}:${song.durationTime.seconds}} has been added to the queue. `);
+                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue. `);
             }
 
             //showQueue(serverQueue);
@@ -414,18 +416,37 @@ async function play(guild, song){
 }
 
 function skip(message, serverQueue){
+    const args = message.content.split(" ");
+
     if (!message.member.voice.channel) {
         return message.channel.send("❌ You have to be in a voice channel to skip the song.");
     }
     if (!serverQueue || serverQueue.songs.length == 0){
         return message.channel.send("❌ No songs to skip.");
     }
+    if (args.length == 2) {
+        let pos = parseInt(args[1]);
+        if (pos > serverQueue.songs.length-1) {
+            return message.channel.send(`❌ Skip position out of bounds. There are \`${serverQueue.songs.length-1}\` songs in the queue.`)   //return statement to avoid skipping
+        } else {
+            console.log(`Removed ${serverQueue.songs[pos].title} from the queue.`);
+            serverQueue.textChannel.send(`Removed \`${serverQueue.songs[pos].title}\` from the queue.`);    //return statement to avoid skipping after removal
+            if (pos == 0){  //removing the current playing song results in a skip
+                serverQueue.player.stop();
+            } else {    //otherwise just delete the song from the queue
+                serverQueue.songs.splice(pos,1);    
+            }
+        }
+    } else if (args.length == 1){
+        serverQueue.player.stop();     //AudioPlayer stop method to skip to next song
+        serverQueue.keep = false;
+        console.log(`Skipped ${serverQueue.songs[0].title}.`);
+        return message.channel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\* ⏩`);
+    } else {
+        help(message);
+    }
 
-    console.log(`Skipped ${serverQueue.songs[0].title}.`);
-    serverQueue.textChannel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\* ⏩`);
-
-    serverQueue.player.stop();     //AudioPlayer stop method to skip to next song
-    serverQueue.keep = false;
+ 
     //play(message.guild,serverQueue.songs[0]);
 }
 
@@ -595,7 +616,7 @@ function help(message){
     !play <query|url> <seek> -- search for a song or enter a YouTube URL  
     !pause -- pause the current song
     !resume -- resume the current song 
-    !skip -- skips over the current song 
+    !skip <n> -- skips the current song or remove a song from the queue
     !stop -- stops the bot from playing  
     !queue -- shows all songs in the queue 
     !clear -- purges all songs in the queue  
