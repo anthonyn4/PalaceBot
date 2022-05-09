@@ -132,7 +132,7 @@ async function execute(message, serverQueue) {
     //parse the given seek time 
     if (args[args.length-1].indexOf(":") != -1){
         let time = args[args.length-1].split(":"); //assuming form of mm:ss
-        if (isNaN(time[0]) || isNaN(time[1])){
+        if (isNaN(time[0]) || isNaN(time[1]) || time[0] < 0 || time[1] < 0){
             //do nothing, move on
         } else {    //otherwise, parse the given time 
             let minutes = Number(time[0]*60);
@@ -281,8 +281,8 @@ async function execute(message, serverQueue) {
             loop: false,
             //loopall: false,
             //seek: timeToSeek,
-            keep: false //whether or not the current song should be kept in the queue
-            //timeoutID: undefined,
+            keep: false, //whether or not the current song should be kept in the queue
+            timeoutID: undefined    //separate timeout ID for each guild
             //volume: 5,
             //playing: true
         };
@@ -341,14 +341,14 @@ async function play(guild, song){
 
     //if no song to be played, idle for 300 seconds (5 min) before destroying connection
     if (!song) {
-        timeoutID = setTimeout(() => {
-            console.log(`Timeout ${timeoutID}.`);
+        serverQueue.timeoutID = setTimeout(() => {
+            console.log(`Timeout ${serverQueue.timeoutID}.`);
             //serverQueue.connection.disconnect();
             getVoiceConnection(guild.id).destroy();
             queue.delete(guild.id);
-            timeoutID = undefined;  //after timeout goes off, reset timeout value.
+            serverQueue.timeoutID = undefined;  //after timeout goes off, reset timeout value.
         }, 300 * 1000);
-        console.log(`Timeout ${timeoutID} set.`);
+        console.log(`Timeout ${serverQueue.timeoutID} set.`);
         if (serverQueue.loop == true){
             serverQueue.loop = false;   //if there is no song to be played, disable the loop, no point looping an empty queue
             console.log('Disabled the loop.');
@@ -357,10 +357,10 @@ async function play(guild, song){
     }
     
     //if song is queued during timeout, clear timeout
-    if (timeoutID != undefined){    
-        console.log(`Timeout ${timeoutID} cleared.`);
-        clearTimeout(timeoutID);
-        timeoutID = undefined;
+    if (serverQueue.timeoutID != undefined){    
+        console.log(`Timeout ${serverQueue.timeoutID} cleared.`);
+        clearTimeout(serverQueue.timeoutID);
+        serverQueue.timeoutID = undefined;
     } 
     
     let stream;
@@ -403,7 +403,7 @@ async function play(guild, song){
     })
 
 
-    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
+    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}}`); //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
     if (serverQueue.loop == true) {
         // don't print anything
     } else {
