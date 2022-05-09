@@ -1,14 +1,12 @@
 /*
     Features to add:
     !skip {n} skips max({n}, queue.length) songs in the queue 
-    Remove individual songs from queue
+    Remove individual songs from queue ✅
     Autoplay related songs
     Seek to a given time ✅
     YouTube playlist support ✅
+    YouTube radio support 
 */
-
-// serverQueue.textChannel.send() is used when an instance of the ServerQueue already exists, 
-// message.channel.send() is used otherwise
 
 //connection to discord
 const Discord = require('discord.js');
@@ -26,7 +24,6 @@ const playDL = require('play-dl');
 const { NoSubscriberBehavior, getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
 
 const queue = new Map(); //map of guild ID and its respective queue
-let timeoutID = undefined;
 
 client.once('ready', () =>{
     console.log("PALACE BAY is online!");
@@ -38,6 +35,7 @@ client.on('disconnect', () =>{
     console.log("PALACE BAY has disconnected.");
 });
 
+//Attempt to fix force disconnect by user breaking the bot
 // client.on('voiceStateUpdate', (oldState, newState) => {
 //     console.log('oldState ' + oldState.channel);
 //     console.log('newState ' + newState.channel);
@@ -80,9 +78,6 @@ client.on('messageCreate', async message =>{
         case 'skip':
             skip(message, serverQueue);
             break;
-        case 'clear':
-            clear(message, serverQueue);
-            break;
         case 'pause':
             pause(message,serverQueue);
              break;
@@ -96,12 +91,12 @@ client.on('messageCreate', async message =>{
         case 'queue':
             showQueue(message,serverQueue);
             break;
+        case 'clear':
+            clear(message, serverQueue);
+            break;
         case 'stop':
             stop(message,serverQueue);
             break;
-        // case 'seek':
-        //     seek(message,serverQueue);
-        //     break;
         default:
            // message.channel.send("You need to enter a valid command!");
             help(message);
@@ -462,20 +457,16 @@ function clear(message, serverQueue){
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No queue to clear.");
     }
-    //skip(message, serverQueue);
+
     //let currentSong = serverQueue.songs[0];
     //serverQueue.songs = [currentSong]; //remove all songs except for currently playing song
     serverQueue.loop = false;
     serverQueue.keep = false;
-    serverQueue.player.stop();  //AudioPlayer stop method
-    serverQueue.songs = [];
-    //serverQueue.loopall = false;
-
-    //queue.delete(message.guild.id);
+    serverQueue.songs = [];     //empty the queue
+    serverQueue.player.stop();  //then skip current song by invoking AudioPlayer stop method
 
     console.log(`Cleared queue.`);
-    return message.channel.send("Cleared queue.");
-    //player.stop();
+    return message.channel.send("🧹 Cleared queue. ");
 }
 
 
@@ -597,7 +588,7 @@ function resume(message, serverQueue){
     return message.channel.send("Resumed song. ▶️")
 }
 
-function stop(message, serverQueue) {
+function stop(message, serverQueue) {   //same thing as clear i guess
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to stop the music.");
     }
@@ -609,7 +600,7 @@ function stop(message, serverQueue) {
     //getVoiceConnection(message.guild.id).destroy();
     //queue.delete(message.guild.id);
     clear(message, serverQueue);
-    serverQueue.player.stop();
+    //serverQueue.player.stop();
 }
 
 /**
