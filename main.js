@@ -94,7 +94,7 @@ client.on('messageCreate', async message =>{
             loopSong(message, serverQueue);
             break;
         case 'queue':
-            showQueue(serverQueue);
+            showQueue(message,serverQueue);
             break;
         case 'stop':
             stop(message,serverQueue);
@@ -206,7 +206,7 @@ async function execute(message, serverQueue) {
                     }
                     songs.push(song)
                 })
-                message.channel.send(`Queued \*\*${songs.length}\*\* songs ✅`)
+                message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`)
             }
         } else if (source === 'so'){
             const so = await playDL.soundcloud(args[1])
@@ -232,7 +232,7 @@ async function execute(message, serverQueue) {
                     }
                     songs.push(song)
                 })
-                message.channel.send(`Queued \*\*${songs.length}\*\* songs ✅`)
+                message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`)
             }
         } else if (source === 'sp'){
             return message.channel.send("Spotify is currently not supported. Refer to https://play-dl.github.io/modules.html#stream for more information.")
@@ -313,20 +313,23 @@ async function execute(message, serverQueue) {
         }
 
     } else {
-        serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue
         //console.log(serverQueue.songs.length);
-        //if the queue exists and it is the only song in the queue, play it
-        if (serverQueue.songs.length == 1) {
+        if (serverQueue.songs.length == 0) {    //check if queue is empty prior to adding songs
+            serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue  
             play(message.guild, serverQueue.songs[0]);
         } else {
-            if (song.seek > 0){
-                console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue seeking to ${song.seekTime.minutes}:${song.seekTime.seconds}`);
-                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
+            serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue
+            if (songs.length > 1) {
+                //return message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`);
             } else {
-                console.log(`Added ${song.title} to the queue. {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
-                return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue. `);
+                if (song.seek > 0){
+                    console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue seeking to ${song.seekTime.minutes}:${song.seekTime.seconds}`);
+                    return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
+                } else {
+                    console.log(`Added ${song.title} to the queue. {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
+                    return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue. `);
+                }
             }
-
             //showQueue(serverQueue);
         }
     }
@@ -405,11 +408,11 @@ async function play(guild, song){
         // don't print anything
     } else {
         if (song.seek > 0){
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`);
-                //.then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
+            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`)
+                .then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
         } else {
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
-                //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
+            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`)
+                .then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         }
         //showQueue(serverQueue);
     }
@@ -430,7 +433,7 @@ function skip(message, serverQueue){
             return message.channel.send(`❌ Skip position out of bounds. There are \`${serverQueue.songs.length-1}\` songs in the queue.`)   //return statement to avoid skipping
         } else {
             console.log(`Removed ${serverQueue.songs[pos].title} from the queue.`);
-            serverQueue.textChannel.send(`Removed \`${serverQueue.songs[pos].title}\` from the queue.`);    //return statement to avoid skipping after removal
+            serverQueue.textChannel.send(`Removed \`${serverQueue.songs[pos].title}\` from the queue.`).then(msg => setTimeout(() => msg.delete(), 30*1000));    
             if (pos == 0){  //removing the current playing song results in a skip
                 serverQueue.player.stop();
             } else {    //otherwise just delete the song from the queue
@@ -441,7 +444,8 @@ function skip(message, serverQueue){
         serverQueue.player.stop();     //AudioPlayer stop method to skip to next song
         serverQueue.keep = false;
         console.log(`Skipped ${serverQueue.songs[0].title}.`);
-        return message.channel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\* ⏩`);
+        return message.channel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\* ⏩`)
+            .then(msg => setTimeout(() => msg.delete(), 30 * 1000)); //delete after 30 seconds
     } else {
         help(message);
     }
@@ -459,17 +463,18 @@ function clear(message, serverQueue){
         return message.channel.send("❌ No queue to clear.");
     }
     //skip(message, serverQueue);
-    let currentSong = serverQueue.songs[0];
-    serverQueue.songs = [currentSong]; //remove all songs except for currently playing song
+    //let currentSong = serverQueue.songs[0];
+    //serverQueue.songs = [currentSong]; //remove all songs except for currently playing song
     serverQueue.loop = false;
     serverQueue.keep = false;
-    //serverQueue.player.stop();  //AudioPlayer stop method
+    serverQueue.player.stop();  //AudioPlayer stop method
+    serverQueue.songs = [];
     //serverQueue.loopall = false;
 
     //queue.delete(message.guild.id);
 
     console.log(`Cleared queue.`);
-    return message.channel.send("Cleared queue. ✅");
+    return message.channel.send("Cleared queue.");
     //player.stop();
 }
 
@@ -544,13 +549,13 @@ function loopSong(message, serverQueue){
    
 }
 
-function showQueue(serverQueue){
-    // if(!message.member.voice.channel){
-    //     return message.channel.send("You have to be in a voice channel to view the queue.");
-    // }
-    // if (!serverQueue || serverQueue.songs.length == 0) {
-    //     return message.channel.send("No queue to show.");
-    // }
+function showQueue(message,serverQueue){
+    if(!message.member.voice.channel){
+        return message.channel.send("You have to be in a voice channel to view the queue.");
+    }
+    if (!serverQueue || serverQueue.songs.length == 0) {
+        return message.channel.send('```' + `No song currently playing\n----------------------------\n` + '```').then(msg => setTimeout(() => msg.delete(), 15*1000));
+    }
     
     let nowPlaying = serverQueue.songs[0];
     let msg = `Now playing: ${nowPlaying.title}\n----------------------------\n`
@@ -565,7 +570,7 @@ function showQueue(serverQueue){
         }
     }
 
-    serverQueue.textChannel.send('```' + msg + '```').then(msg => setTimeout(() => msg.delete(), duration*1000));
+    return message.channel.send('```' + msg + '```').then(msg => setTimeout(() => msg.delete(), duration*1000));
 }
 
 function pause(message, serverQueue){
