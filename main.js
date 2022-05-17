@@ -60,7 +60,6 @@ playDL.getFreeClientID().then((clientID) => playDL.setToken({
 
 client.on('messageCreate', async message =>{
     if (message.author.bot) {
-       // message.delete() 
         return; //don't respond to self-messages
     }
     if (!message.content.startsWith(prefix)) return;
@@ -88,14 +87,18 @@ client.on('messageCreate', async message =>{
         case 'loop':
             loopSong(message, serverQueue);
             break;
+        case 'q':
         case 'queue':
             showQueue(message,serverQueue);
             break;
         case 'clear':
             clear(message, serverQueue);
             break;
-        case 'stop':
+        case 'stop':    
             stop(message,serverQueue);
+            break;
+        case 'shuffle':
+            shuffle(message,serverQueue);
             break;
         default:
            // message.channel.send("You need to enter a valid command!");
@@ -221,8 +224,8 @@ async function execute(message, serverQueue) {
                     song = {
                         title: track.name,
                         url: track.url,
-                        duration: track.duration,
-                        durationTime: parse(track.duration),
+                        duration: track.durationInSec,
+                        durationTime: parse(track.durationInSec),
                         source: 'so'
                     }
                     songs.push(song)
@@ -328,6 +331,7 @@ async function execute(message, serverQueue) {
             //showQueue(serverQueue);
         }
     }
+    //setTimeout(() => {message.delete(), 30*1000}); //delete user message after 30 seconds
 }
 
 
@@ -428,7 +432,7 @@ function skip(message, serverQueue){
             return message.channel.send(`❌ Skip position out of bounds. There are \`${serverQueue.songs.length-1}\` songs in the queue.`)   //return statement to avoid skipping
         } else {
             console.log(`Removed ${serverQueue.songs[pos].title} from the queue.`);
-            serverQueue.textChannel.send(`Removed \`${serverQueue.songs[pos].title}\` from the queue.`).then(msg => setTimeout(() => msg.delete(), 30*1000));    
+            serverQueue.textChannel.send(`Removed \`${serverQueue.songs[pos].title}\` from the queue.`);//.then(msg => setTimeout(() => msg.delete(), 30*1000));    
             if (pos == 0){  //removing the current playing song results in a skip
                 serverQueue.player.stop();
             } else {    //otherwise just delete the song from the queue
@@ -439,8 +443,8 @@ function skip(message, serverQueue){
         serverQueue.player.stop();     //AudioPlayer stop method to skip to next song
         serverQueue.keep = false;
         console.log(`Skipped ${serverQueue.songs[0].title}.`);
-        return message.channel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\* ⏩`)
-            .then(msg => setTimeout(() => msg.delete(), 30 * 1000)); //delete after 30 seconds
+        return message.channel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\*.`);
+            //.then(msg => setTimeout(() => msg.delete(), 30 * 1000)); //delete after 30 seconds
     } else {
         help(message);
     }
@@ -458,11 +462,11 @@ function clear(message, serverQueue){
         return message.channel.send("❌ No queue to clear.");
     }
 
-    //let currentSong = serverQueue.songs[0];
-    //serverQueue.songs = [currentSong]; //remove all songs except for currently playing song
+    let currentSong = serverQueue.songs[0];
+    serverQueue.songs = [currentSong]; //remove all songs except for currently playing song
     serverQueue.loop = false;
     serverQueue.keep = false;
-    serverQueue.songs = [];     //empty the queue
+    //serverQueue.songs = [];     //empty the queue
     serverQueue.player.stop();  //then skip current song by invoking AudioPlayer stop method
 
     console.log(`Cleared queue.`);
@@ -573,7 +577,7 @@ function pause(message, serverQueue){
     }
     console.log(`Song paused.`);
     serverQueue.player.pause();
-    return message.channel.send("Paused song. ⏸️")
+    return message.channel.send("⏸️ Paused song.")
 }
 
 function resume(message, serverQueue){
@@ -585,7 +589,7 @@ function resume(message, serverQueue){
     }
     console.log(`Song resumed.`);
     serverQueue.player.unpause();
-    return message.channel.send("Resumed song. ▶️")
+    return message.channel.send("▶️ Resumed song.")
 }
 
 function stop(message, serverQueue) {   //same thing as clear i guess
@@ -622,6 +626,21 @@ function help(message){
     message.channel.send('```' + commands + '```').then(msg => setTimeout(() => msg.delete(), 10*1000));
 }
 
+function shuffle(message, serverQueue) {
+    if(!message.member.voice.channel){
+        return message.channel.send("❌ You have to be in a voice channel to stop the music.");
+    }
+    if (!serverQueue || serverQueue.songs.length == 0) {
+        return message.channel.send("❌ No music to stop.");
+    }
+
+    for (let i = serverQueue.songs.length-1; i>1; --i) {    //Fisher-Yates shuffle algorithm but exclude current playing song
+        const j = 1 + Math.floor(Math.random() * i);
+        [serverQueue.songs[i], serverQueue.songs[j]] = [serverQueue.songs[j], serverQueue.songs[i]];
+    }
+    console.log('Shuffled the queue.');
+    message.channel.send('🔀 Shuffled the queue.');
+}
 /**
  * Given a number, parses it into the form of mm:ss
  * @param {number} input number to parse
