@@ -410,14 +410,14 @@ async function play(guild, song){
 
     console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
     const songEmbed = new MessageEmbed()
-        .setColor('#0099ff')
-        .setAuthor({name: `${song.title} | ${song.durationTime.minutes}:${song.durationTime.seconds}`, iconURL: 'attachment://pb.png', url: song.url})
+        .setColor('#b233ff')
+        .setAuthor({name: `${song.title} [${song.durationTime.minutes}:${song.durationTime.seconds}]`, iconURL: 'attachment://pb.png', url: song.url})
         .setImage(song.thumbnail)
-        .setFooter({text: `${serverQueue.songs.length} songs in the queue`});
+        .setFooter({text: `${serverQueue.songs.length-1} songs in the queue`}); //exclude current playing song
     // if (song.seek > 0) {
     //     songEmbed.setDescription(`Seeked to ${song.seekTime.minutes}:${song.seekTime.seconds}`)
     // }
-    serverQueue.textChannel.send({embeds: [songEmbed], files: ['./assets/pb.png']});
+    serverQueue.textChannel.send({embeds: [songEmbed], files: ['./assets/pb.png']}).then(msg => setTimeout(() => msg.delete(), song.duration*1000));
 }
 
 function skip(message, serverQueue){
@@ -470,7 +470,7 @@ function clear(message, serverQueue){
     serverQueue.loop = false;
     serverQueue.keep = false;
     //serverQueue.songs = [];     //empty the queue
-    serverQueue.player.stop();  //then skip current song by invoking AudioPlayer stop method
+    //serverQueue.player.stop();  //then skip current song by invoking AudioPlayer stop method
 
     console.log(`Cleared queue.`);
     return message.channel.send("🧹 Cleared queue. ");
