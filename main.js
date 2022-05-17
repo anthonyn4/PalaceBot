@@ -113,8 +113,6 @@ async function execute(message, serverQueue) {
     const args = message.content.split(" ");
     const voiceChannel = message.member.voice.channel;
 
-    let timeToSeek = 0;
-
     if (!voiceChannel){
         return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
        //return message.channel.send("You need to be in a channel to play music.");
@@ -127,23 +125,11 @@ async function execute(message, serverQueue) {
 
     if(args.length == 1) {return message.channel.send("Specify a search or URL to play 🤓")};   //someone invokes play command without any arguments
     
-    //parse the given seek time 
-    if (args[args.length-1].indexOf(":") != -1){
-        let time = args[args.length-1].split(":"); //assuming form of mm:ss
-        if (isNaN(time[0]) || isNaN(time[1]) || time[0] < 0 || time[1] < 0){
-            //do nothing, move on
-        } else {    //otherwise, parse the given time 
-            let minutes = Number(time[0]*60);
-            let seconds = Number(time[1]);
-            timeToSeek = minutes+seconds;
-            //console.log(timeToSeek);
-
-        }
-    }
+    //check the last argument to see if it is a valid time to seek to
+    let timeToSeek = parse(args[args.length-1]);
 
     let song = {};
     let songs = [];
-    //if (args[1].startsWith("https")){
     let check = await playDL.validate(args[1].trim());
     //console.log(check)  //debug
     if (check === false) {
@@ -467,7 +453,7 @@ function clear(message, serverQueue){
     serverQueue.loop = false;
     serverQueue.keep = false;
     //serverQueue.songs = [];     //empty the queue
-    serverQueue.player.stop();  //then skip current song by invoking AudioPlayer stop method
+    //serverQueue.player.stop();  //then skip current song by invoking AudioPlayer stop method
 
     console.log(`Cleared queue.`);
     return message.channel.send("🧹 Cleared queue. ");
@@ -558,7 +544,7 @@ function showQueue(message,serverQueue){
     let duration = nowPlaying.duration;
     for (var i = 1; i < length; i++){
         if (serverQueue.songs[i].seek > 0){
-            msg += `${i}. ${serverQueue.songs[i].title} seek: ${serverQueue.songs[i].seekTime.minutes}:${serverQueue.songs[i].seekTime.seconds}\n`
+            msg += `${i}. ${serverQueue.songs[i].title} starting at ${serverQueue.songs[i].seekTime.minutes}:${serverQueue.songs[i].seekTime.seconds}\n`
             duration = nowPlaying.duration - nowPlaying.seek;
         } else {
             msg += `${i}. ${serverQueue.songs[i].title}\n`;
@@ -646,41 +632,43 @@ function shuffle(message, serverQueue) {
  * @param {number} input number to parse
  * @returns {object} object containing the parsed data
  */
-function parse(input){
-    let minutes = Math.floor(input/60);
-    let seconds = input%60 < 10 ? '0' + input%60 : input%60;
-    //return [minutes, seconds];
-    return {minutes: minutes, seconds: seconds};
+function parse(input){ 
+    //console.log(input);
+    if (typeof input == "string" && input.indexOf(":") != -1) { //input in form of mm:ss
+        let time = input.split(":"); 
+        if (isNaN(time[0]) || isNaN(time[1]) || time[0] < 0 || time[1] < 0){
+            //do nothing, move on
+        } else {    //otherwise, parse the given time 
+            let minutes = Number(time[0]*60);
+            let seconds = Number(time[1]);
+            timeToSeek = minutes+seconds;
+            return timeToSeek;
+            //console.log(timeToSeek);
+        }
+    } else if (typeof input == "number"){
+        let minutes = Math.floor(input/60);
+        let seconds = input%60 < 10 ? '0' + input%60 : input%60;
+        //return [minutes, seconds];
+        return {minutes: minutes, seconds: seconds};
+    } else {
+        return 0;
+    }
 }
 
-// function seek(input) {
-//     // const args = message.content.split(" ");
-//     // if(!message.member.voice.channel){
-//     //     return message.channel.send("❌ You have to be in a voice channel to seek.");
-//     // }
-//     // if (!serverQueue || serverQueue.songs.length == 0) {
-//     //     return message.channel.send("❌ No music to seek.");
-//     // }
-//     let seekInfo = {};
-//     const time = input.split(":"); //assuming form of mm:ss
-//     if (isNaN(time[0]) || isNaN(time[1])){
-//         return -1
-//     }
-//     const minutes = Number(time[0]*60)
-//     const seconds = Number(time[1])
-//     const totalTime = minutes+seconds
-//     seekInfo = {
-//         minute: minutes,
-//         second: seconds,
-//         duration: totalTime
-//     }
-//     //console.log(totalTime)
-//     return seekInfo;
-//     //serverQueue.seek = args[1];
-//     //console.log(serverQueue.seek);
 
-//     //serverQueue.player.stop();
-//    // play(message.guild, serverQueue.songs[0]);
+// function seek(message,serverQueue) {
+//     const args = message.content.split(" ");
+//     if(!message.member.voice.channel){
+//         return message.channel.send("❌ You have to be in a voice channel to seek.");
+//     }
+//     if (!serverQueue || serverQueue.songs.length == 0) {
+//         return message.channel.send("❌ No song to seek.");
+//     }
+//     let timeToSeek = parse(args[1]);
+//     let seekTime = args[1];
+//     serverQueue.songs[0].timeToSeek = timeToSeek;
+//     serverQueue.songs[0].seekTime = seekTime;
+//     play(message.guild, serverQueue.songs[0]);
 // }
 
 client.login(token);
