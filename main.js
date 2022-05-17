@@ -106,7 +106,7 @@ client.on('messageCreate', async message =>{
             help(message);
             break;
     }
-    message.delete();
+    //message.delete();
 });
 
 
@@ -229,14 +229,9 @@ async function execute(message, serverQueue) {
                     song = {
                         title: track.name,
                         url: track.url,
-<<<<<<< HEAD
-                        duration: track.duration,
-                        durationTime: parse(track.duration),
-                        thumbnail: track.thumbnail,
-=======
                         duration: track.durationInSec,
                         durationTime: parse(track.durationInSec),
->>>>>>> f0ed0b01745fb96a0d0f3acbdacf61bb9c16e1be
+                        thumbnail: track.thumbnail,
                         source: 'so'
                     }
                     songs.push(song)
@@ -413,7 +408,6 @@ async function play(guild, song){
     })
 
 
-<<<<<<< HEAD
     console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
     const songEmbed = new MessageEmbed()
         .setColor('#0099ff')
@@ -424,21 +418,6 @@ async function play(guild, song){
     //     songEmbed.setDescription(`Seeked to ${song.seekTime.minutes}:${song.seekTime.seconds}`)
     // }
     serverQueue.textChannel.send({embeds: [songEmbed], files: ['./assets/pb.png']});
-=======
-    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}}`); //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
-    if (serverQueue.loop == true) {
-        // don't print anything
-    } else {
-        if (song.seek > 0){
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`)
-                .then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
-        } else {
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`)
-                .then(msg => setTimeout(() => msg.delete(), song.duration*1000));
-        }
-        //showQueue(serverQueue);
-    }
->>>>>>> f0ed0b01745fb96a0d0f3acbdacf61bb9c16e1be
 }
 
 function skip(message, serverQueue){
@@ -494,11 +473,7 @@ function clear(message, serverQueue){
     serverQueue.player.stop();  //then skip current song by invoking AudioPlayer stop method
 
     console.log(`Cleared queue.`);
-<<<<<<< HEAD
-    return message.channel.send("Cleared queue. ✅");
-=======
     return message.channel.send("🧹 Cleared queue. ");
->>>>>>> f0ed0b01745fb96a0d0f3acbdacf61bb9c16e1be
 }
 
 
