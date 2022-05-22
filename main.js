@@ -66,7 +66,7 @@ client.on('messageCreate', async message =>{
     
     const serverQueue = queue.get(message.guild.id);
     
-    const args = message.content.slice(prefix.length).trim().split(' ');
+    const args = message.content.slice(prefix.length).split(' ');
     const command = args.shift().toLowerCase();
     switch(command){
         case 'p':
@@ -360,6 +360,7 @@ async function play(guild, song){
     let resource = createAudioResource(stream.stream, {
         inputType: stream.type
     });
+ 
     serverQueue.connection.subscribe(serverQueue.player);
 
     serverQueue.player.play(resource);
@@ -393,11 +394,11 @@ async function play(guild, song){
         // don't print anything
     } else {
         if (song.seek > 0){
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`)
-                .then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
+            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`);
+                //.then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
         } else {
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`)
-                .then(msg => setTimeout(() => msg.delete(), song.duration*1000));
+            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
+                //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         }
         //showQueue(serverQueue);
     }
@@ -416,6 +417,8 @@ function skip(message, serverQueue){
         let pos = parseInt(args[1]);
         if (pos > serverQueue.songs.length-1) {
             return message.channel.send(`❌ Skip position out of bounds. There are \`${serverQueue.songs.length-1}\` songs in the queue.`)   //return statement to avoid skipping
+        } else if (isNaN(pos)) {
+            return;
         } else {
             console.log(`Removed ${serverQueue.songs[pos].title} from the queue.`);
             serverQueue.textChannel.send(`Removed \`${serverQueue.songs[pos].title}\` from the queue.`);//.then(msg => setTimeout(() => msg.delete(), 30*1000));    
@@ -427,14 +430,13 @@ function skip(message, serverQueue){
         }
     } else if (args.length == 1){
         serverQueue.player.stop();     //AudioPlayer stop method to skip to next song
-        serverQueue.keep = false;
         console.log(`Skipped ${serverQueue.songs[0].title}.`);
         return message.channel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\*.`);
             //.then(msg => setTimeout(() => msg.delete(), 30 * 1000)); //delete after 30 seconds
     } else {
         help(message);
     }
-
+    serverQueue.keep = false; //don't keep skipped song in the queue
  
     //play(message.guild,serverQueue.songs[0]);
 }
