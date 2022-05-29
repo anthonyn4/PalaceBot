@@ -100,6 +100,9 @@ client.on('messageCreate', async message =>{
         case 'shuffle':
             shuffle(message,serverQueue);
             break;
+        case 'seek':
+            seek(message,serverQueue);
+            break;
         default:
            // message.channel.send("You need to enter a valid command!");
             help(message);
@@ -242,7 +245,7 @@ async function execute(message, serverQueue) {
 
     //console.log(song);
     if(song.source === 'yt'){
-        let maxDuration = song.duration-2;
+        let maxDuration = song.duration;
         if (timeToSeek > maxDuration){ 
             //console.log(maxDuration)
             let maxTime = parse(maxDuration);
@@ -387,7 +390,6 @@ async function play(guild, song){
         //serverQueue.seek = 0;   //reset any seek option after playing
         play(guild, serverQueue.songs[0]);
     })
-
 
     console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}}`); //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
     if (serverQueue.loop == true) {
@@ -587,12 +589,12 @@ function stop(message, serverQueue) {   //same thing as clear i guess
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No music to stop.");
     }
-    console.log(`Stopped the bot.`);
+    //console.log(`Stopped the bot.`);
     //getVoiceConnection(message.guild.id).disconnect();
     //getVoiceConnection(message.guild.id).destroy();
     //queue.delete(message.guild.id);
     clear(message, serverQueue);
-    //serverQueue.player.stop();
+    serverQueue.player.stop();
 }
 
 /**
@@ -658,20 +660,34 @@ function parse(input){
 }
 
 
-// function seek(message,serverQueue) {
-//     const args = message.content.split(" ");
-//     if(!message.member.voice.channel){
-//         return message.channel.send("❌ You have to be in a voice channel to seek.");
-//     }
-//     if (!serverQueue || serverQueue.songs.length == 0) {
-//         return message.channel.send("❌ No song to seek.");
-//     }
-//     let timeToSeek = parse(args[1]);
-//     let seekTime = args[1];
-//     serverQueue.songs[0].timeToSeek = timeToSeek;
-//     serverQueue.songs[0].seekTime = seekTime;
-//     play(message.guild, serverQueue.songs[0]);
-// }
+function seek(message,serverQueue) {
+    const args = message.content.split(" ");
+    if(!message.member.voice.channel){
+        return message.channel.send("❌ You have to be in a voice channel to seek.");
+    }
+    if (!serverQueue || serverQueue.songs.length == 0) {
+        return message.channel.send("❌ No song to seek.");
+    }
+    if(serverQueue.songs[0].source != 'yt'){ 
+        return message.channel.send("❌ Song must be from YouTube to seek!");
+    }
+    let timeToSeek = parse(args[1]);
+    let seekTime = parse(timeToSeek);
+    //console.log(timeToSeek);
+    //console.log(seekTime);
+    let maxDuration = serverQueue.songs[0].duration;
+    if (timeToSeek > maxDuration){ 
+        //console.log(maxDuration)
+        let maxTime = parse(maxDuration);
+        console.log(`Seek exceeded song limits, requested ${timeToSeek}, max is ${maxDuration}`);
+        return message.channel.send(`❌ Seeking beyond limits. <0-${maxTime.minutes}:${maxTime.seconds}>`);
+    }
+    let currentSong = serverQueue.songs[0];
+    currentSong.seek = timeToSeek;
+    currentSong.seekTime = seekTime;
+    serverQueue.songs.unshift(currentSong);
+    serverQueue.player.stop();
+}
 
 client.login(token);
 
