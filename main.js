@@ -103,6 +103,8 @@ client.on('messageCreate', async message =>{
         case 'seek':
             seek(message,serverQueue);
             break;
+        case 'help':
+        case 'commands':
         default:
            // message.channel.send("You need to enter a valid command!");
             help(message);
@@ -610,10 +612,11 @@ function help(message){
     !stop -- stops the bot from playing  
     !queue -- shows all songs in the queue 
     !clear -- purges all songs in the queue  
-    !loop -- repeats all of the songs in the queue (!loop off to disable the loop)\n
-    To view these commands again, type !help 
+    !loop -- repeats all of the songs in the queue (!loop off to disable the loop)
+    !seek <mm:ss> -- seek to a desired time in the current playing song\n
+    To view these commands again, type !help or !commands
     `
-    message.channel.send('```' + commands + '```').then(msg => setTimeout(() => msg.delete(), 10*1000));
+    message.channel.send('```' + commands + '```').then(msg => setTimeout(() => msg.delete(), 30*1000));
 }
 
 function shuffle(message, serverQueue) {
