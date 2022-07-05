@@ -475,7 +475,7 @@ function loopSong(message, serverQueue){
         return message.channel.send("❌ No song to loop.");
     }
     //if only !loop is checkd with no parameter
-    if (args.length == 1){
+    //if (args.length == 1){
         //console.log(`Loop parameter not specified. Loop not executed.`);
         //return message.channel.send(`Specify the loop parameter. (!loop <this/all/off>`);
         serverQueue.loop = !serverQueue.loop;    //loop the queue
@@ -488,11 +488,11 @@ function loopSong(message, serverQueue){
             return message.channel.send('📴Loop **DEACTIVATED**😥');
         }
         //return message.channel.send('Looping the queue.');
-    }
+   // }
 
+    /*
     let check = args[1].toLowerCase();
     switch (check) {
-        /*
         case 'this':
             if (serverQueue.loop) { //If already looping, then calling the command again will disable the loop
                 serverQueue.loop = false;
@@ -516,7 +516,6 @@ function loopSong(message, serverQueue){
                 serverQueue.textChannel.send(`No longer looping the queue.`);
             }
             break;
-        */
         case 'off':
             if (!serverQueue.loop) {
                return message.channel.send(`❌ The loop is already off.`);
@@ -528,11 +527,10 @@ function loopSong(message, serverQueue){
             }
             //break; //not necessary due to return statements
         default:
-            //console.log(`Attempt to loop failed.`);
             //message.channel.send(`Specify the loop parameter. (!loop <this/all/off>`);
             return message.channel.send('!loop to loop the queue, !loop off to disable the loop. 🤓')
     }
-   
+   */
 }
 
 function showQueue(message,serverQueue){
