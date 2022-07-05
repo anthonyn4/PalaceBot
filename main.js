@@ -122,11 +122,11 @@ async function execute(message, serverQueue) {
         return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
        //return message.channel.send("You need to be in a channel to play music.");
     }
-    const permissions = voiceChannel.permissionsFor(message.client.user);
-    if (!permissions.has('CONNECT') || !permissions.has('SPEAK')) {
-        return message.channel.send("imagine not having permissions 😭 ");
-        //return message.channel.send("You don't have permission to do that.")
-    };
+    // const permissions = voiceChannel.permissionsFor(message.client.user);
+    // if (!permissions.has('CONNECT') || !permissions.has('SPEAK')) {
+    //     return message.channel.send("imagine not having permissions 😭 ");
+    //     //return message.channel.send("You don't have permission to do that.")
+    // };
 
     if(args.length == 1) {return message.channel.send("Specify a search or URL to play 🤓")};   //someone invokes play command without any arguments
     
@@ -292,7 +292,7 @@ async function execute(message, serverQueue) {
                 behaviors: {
                     noSubscriber: NoSubscriberBehavior.Stop,
                 },
-            }*/
+                }*/
             );
             play(message.guild, queueConstructor.songs[0]);
         } catch (err) {
@@ -331,14 +331,14 @@ async function play(guild, song){
 
     //if no song to be played, idle for 300 seconds (5 min) before destroying connection
     if (!song) {
-        serverQueue.timeoutID = setTimeout(() => {
-            console.log(`Timeout ${serverQueue.timeoutID}.`);
+        serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
+            console.log(`Timeout for ${guild.name}.`);
             //serverQueue.connection.disconnect();
             getVoiceConnection(guild.id).destroy();
             queue.delete(guild.id);
             serverQueue.timeoutID = undefined;  //after timeout goes off, reset timeout value.
-        }, 300 * 1000);
-        console.log(`Timeout ${serverQueue.timeoutID} set.`);
+        }, 10 * 60 * 1000); //10 min idle
+        console.log(`Timeout set for ${guild.name}.`);
         if (serverQueue.loop == true){
             serverQueue.loop = false;   //if there is no song to be played, disable the loop, no point looping an empty queue
             console.log('Disabled the loop.');
@@ -348,7 +348,7 @@ async function play(guild, song){
     
     //if song is queued during timeout, clear timeout
     if (serverQueue.timeoutID != undefined){    
-        console.log(`Timeout ${serverQueue.timeoutID} cleared.`);
+        console.log(`Timeout cleared for ${guild.name}.`);
         clearTimeout(serverQueue.timeoutID);
         serverQueue.timeoutID = undefined;
     } 
@@ -389,11 +389,10 @@ async function play(guild, song){
                 serverQueue.keep = true;    //reset keep flag after skipping in a loop
             }
         }
-        //serverQueue.seek = 0;   //reset any seek option after playing
         play(guild, serverQueue.songs[0]);
     })
 
-    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}}`); //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
+    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in ${guild.name}`); //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
     if (serverQueue.loop == true) {
         // don't print anything
     } else {
@@ -605,10 +604,10 @@ function stop(message, serverQueue) {   //same thing as clear i guess
  */
 function help(message){
     const commands = `
-    !play <query|url> <seek> -- search for a song or enter a YouTube URL  
+    !play <query|url> -- search for a song or enter a YouTube or SoundCloud URL (Supports playlists)
     !pause -- pause the current song
     !resume -- resume the current song 
-    !skip <n> -- skips the current song or remove a song from the queue
+    !skip <n> -- skips the current song or remove the nth song from the queue
     !stop -- stops the bot from playing  
     !queue -- shows all songs in the queue 
     !clear -- purges all songs in the queue  
@@ -616,7 +615,7 @@ function help(message){
     !seek <mm:ss> -- seek to a desired time in the current playing song\n
     To view these commands again, type !help or !commands
     `
-    message.channel.send('```' + commands + '```').then(msg => setTimeout(() => msg.delete(), 30*1000));
+    message.channel.send('```' + commands + '```');//.then(msg => setTimeout(() => msg.delete(), 30*1000));
 }
 
 function shuffle(message, serverQueue) {
@@ -634,6 +633,7 @@ function shuffle(message, serverQueue) {
     console.log('Shuffled the queue.');
     message.channel.send('🔀 Shuffled the queue.');
 }
+
 /**
  * Given a number, parses it into the form of mm:ss
  * @param {number} input number to parse
@@ -679,17 +679,24 @@ function seek(message,serverQueue) {
     //console.log(timeToSeek);
     //console.log(seekTime);
     let maxDuration = serverQueue.songs[0].duration;
+    let maxTime = parse(maxDuration);
     if (timeToSeek > maxDuration){ 
         //console.log(maxDuration)
-        let maxTime = parse(maxDuration);
         console.log(`Seek exceeded song limits, requested ${timeToSeek}, max is ${maxDuration}`);
         return message.channel.send(`❌ Seeking beyond limits. <0-${maxTime.minutes}:${maxTime.seconds}>`);
+    } else if (timeToSeek < 0) {
+        console.log(`Seek below zero, requested ${timeToSeek}, max is ${maxDuration}`);
+        return message.channel.send(`❌ Seeking below zero. <0-${maxTime.minutes}:${maxTime.seconds}>`);
     }
     let currentSong = serverQueue.songs[0];
     currentSong.seek = timeToSeek;
     currentSong.seekTime = seekTime;
     serverQueue.songs.unshift(currentSong);
     serverQueue.player.stop();
+}
+
+function skipto(message,serverQueue){
+
 }
 
 client.login(token);
