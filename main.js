@@ -35,18 +35,32 @@ client.on('disconnect', () =>{
     console.log("PALACE BAY has disconnected.");
 });
 
-//Attempt to fix force disconnect by user breaking the bot
-// client.on('voiceStateUpdate', (oldState, newState) => {
-//     console.log('oldState ' + oldState.channel);
-//     console.log('newState ' + newState.channel);
-//     //bot is joining
-//     if (oldState.channel === null) return; //console.log('JOINED')  
-//     //bot is disconnecting
-//     if (newState.channel === null) {
-//         //console.log('disconnected')
-//         queue.delete(oldState.guild.id);
-//     }
-// });
+//Solution to bot breaking on force disconnect
+client.on('voiceStateUpdate', (oldState, newState) => {
+    if (newState.channel && !oldState.channel) {
+      console.log(
+        `${newState.member.displayName} has joined the voice channel "${newState.channel.name}"`
+      );
+    }
+    if (!newState.channel && oldState.channel) {
+      console.log(
+        `${oldState.member.displayName} has left the voice channel "${oldState.channel.name}"`
+      );
+      queue.delete(oldState.guild.id);
+    }  
+    // if (newState.channel && oldState.channel) {
+    //   if (newState.channel.id !== oldState.channel.id) {
+    //     console.log(
+    //       `${newState.member.displayName} has left the voice channel "${oldState.channel.name}" and joined "${newState.channel.name}"`
+    //     );
+    //   } else {
+    //     console.log(
+    //       `${newState.member.displayName} is still in the voice channel "${oldState.channel.name}" but there were some changes (e.g. muted/unmuted themselves, started sharing their screen, etc.)`
+    //     );
+    //   }
+    // }
+  });
+
 /*
 client.once('error', error => {
     console.error(`Error: ${error.message} with resource ${error.resource.title}`);
@@ -332,13 +346,13 @@ async function play(guild, song){
     //if no song to be played, idle for 300 seconds (5 min) before destroying connection
     if (!song) {
         serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
-            console.log(`Timeout for ${guild.name}.`);
+            console.log(`Timeout for "${guild.name}"`);
             //serverQueue.connection.disconnect();
             getVoiceConnection(guild.id).destroy();
             queue.delete(guild.id);
             serverQueue.timeoutID = undefined;  //after timeout goes off, reset timeout value.
         }, 10 * 60 * 1000); //10 min idle
-        console.log(`Timeout set for ${guild.name}.`);
+        console.log(`Timeout set for "${guild.name}"`);
         if (serverQueue.loop == true){
             serverQueue.loop = false;   //if there is no song to be played, disable the loop, no point looping an empty queue
             console.log('Disabled the loop.');
@@ -348,7 +362,7 @@ async function play(guild, song){
     
     //if song is queued during timeout, clear timeout
     if (serverQueue.timeoutID != undefined){    
-        console.log(`Timeout cleared for ${guild.name}.`);
+        console.log(`Timeout cleared for "${guild.name}"`);
         clearTimeout(serverQueue.timeoutID);
         serverQueue.timeoutID = undefined;
     } 
@@ -392,7 +406,7 @@ async function play(guild, song){
         play(guild, serverQueue.songs[0]);
     })
 
-    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in ${guild.name}`); //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
+    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${guild.name}"`); //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
     if (serverQueue.loop == true) {
         // don't print anything
     } else {
