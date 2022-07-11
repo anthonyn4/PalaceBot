@@ -1,6 +1,5 @@
 /*
     Features to add:
-    !skip {n} skips max({n}, queue.length) songs in the queue 
     Remove individual songs from queue ✅
     Autoplay related songs
     Seek to a given time ✅
@@ -36,30 +35,30 @@ client.on('disconnect', () =>{
 });
 
 //Solution to bot breaking on force disconnect
-client.on('voiceStateUpdate', (oldState, newState) => {
-    if (newState.channel && !oldState.channel) {
-      console.log(
-        `${newState.member.displayName} has joined the voice channel "${newState.channel.name}"`
-      );
-    }
-    if (!newState.channel && oldState.channel) {
-      console.log(
-        `${oldState.member.displayName} has left the voice channel "${oldState.channel.name}"`
-      );
-      queue.delete(oldState.guild.id);
-    }  
-    // if (newState.channel && oldState.channel) {
-    //   if (newState.channel.id !== oldState.channel.id) {
-    //     console.log(
-    //       `${newState.member.displayName} has left the voice channel "${oldState.channel.name}" and joined "${newState.channel.name}"`
-    //     );
-    //   } else {
-    //     console.log(
-    //       `${newState.member.displayName} is still in the voice channel "${oldState.channel.name}" but there were some changes (e.g. muted/unmuted themselves, started sharing their screen, etc.)`
-    //     );
-    //   }
-    // }
-  });
+// client.on('voiceStateUpdate', (oldState, newState) => {
+//     if (newState.channel && !oldState.channel) {
+//       console.log(
+//         `${newState.member.displayName} has joined the voice channel "${newState.channel.name}"`
+//       );
+//     }
+//     if (!newState.channel && oldState.channel) {
+//       console.log(
+//         `${oldState.member.displayName} has left the voice channel "${oldState.channel.name}"`
+//       );
+//       queue.delete(oldState.guild.id);
+//     }  
+//     // if (newState.channel && oldState.channel) {
+//     //   if (newState.channel.id !== oldState.channel.id) {
+//     //     console.log(
+//     //       `${newState.member.displayName} has left the voice channel "${oldState.channel.name}" and joined "${newState.channel.name}"`
+//     //     );
+//     //   } else {
+//     //     console.log(
+//     //       `${newState.member.displayName} is still in the voice channel "${oldState.channel.name}" but there were some changes (e.g. muted/unmuted themselves, started sharing their screen, etc.)`
+//     //     );
+//     //   }
+//     // }
+//   });
 
 /*
 client.once('error', error => {
