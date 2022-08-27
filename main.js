@@ -5,6 +5,7 @@
     Seek to a given time ✅
     YouTube playlist support ✅
     YouTube radio support 
+
 */
 
 //connection to discord
@@ -20,7 +21,7 @@ const client = new Client({ intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_S
 
 const playDL = require('play-dl');
 
-const { NoSubscriberBehavior, getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
+const { NoSubscriberBehavior, VoiceConnectionStatus, entersState, getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
 
 const queue = new Map(); //map of guild ID and its respective queue
 
@@ -30,11 +31,11 @@ client.once('ready', () =>{
 client.once('reconnect', () =>{
     console.log("PALACE BAY is reconnecting...");
 });
-client.on('disconnect', () =>{
-    console.log("PALACE BAY has disconnected.");
-});
+// client.on('disconnect', () =>{
+//     console.log("PALACE BAY has disconnected.");
+// });
 
-//Solution to bot breaking on force disconnect
+
 // client.on('voiceStateUpdate', (oldState, newState) => {
 //     if (newState.channel && !oldState.channel) {
 //       console.log(
@@ -154,7 +155,7 @@ async function execute(message, serverQueue) {
         return message.channel.send("❌ Failed to validate URL or search.");
     } else if (check === 'search') {
         let query = message.content.substring(message.content.indexOf(' '),timeToSeek ? message.content.lastIndexOf(' ') : message.content.length).trim();
-        console.log(`Searching for '${query}' 🔎`);
+        console.log(`${message.author.username} searched for '${query}' 🔎`);
         const searchMsg = await message.channel.send(`Searching for '${query}' 🔎`);
         const search = await playDL.search(query, {
             limit: 1
@@ -307,6 +308,22 @@ async function execute(message, serverQueue) {
                 },
                 }*/
             );
+
+            //check if bot is moving channels or forcibly disconnected
+            connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
+                try {
+                    await Promise.race([
+                        entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+                        entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+                    ]);
+                    // Seems to be reconnecting to a new channel - ignore disconnect
+                } catch (error) {
+                    // Seems to be a real disconnect which SHOULDN'T be recovered from
+                    connection.destroy();
+                    queue.delete(message.guild.id);
+                }
+            });
+
             play(message.guild, queueConstructor.songs[0]);
         } catch (err) {
             console.log(err);
@@ -338,6 +355,10 @@ async function execute(message, serverQueue) {
     //setTimeout(() => {message.delete(), 30*1000}); //delete user message after 30 seconds
 }
 
+function destroy(guild){
+    getVoiceConnection(guild.id).destroy();
+    queue.delete(guild.id);
+}
 
 async function play(guild, song){
     const serverQueue = queue.get(guild.id);
@@ -346,9 +367,7 @@ async function play(guild, song){
     if (!song) {
         serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
             console.log(`Timeout for "${guild.name}"`);
-            //serverQueue.connection.disconnect();
-            getVoiceConnection(guild.id).destroy();
-            queue.delete(guild.id);
+            destroy(guild);
             serverQueue.timeoutID = undefined;  //after timeout goes off, reset timeout value.
         }, 10 * 60 * 1000); //10 min idle
         console.log(`Timeout set for "${guild.name}"`);
@@ -429,6 +448,7 @@ function skip(message, serverQueue){
     if (!serverQueue || serverQueue.songs.length == 0){
         return message.channel.send("❌ No songs to skip.");
     }
+    
     if (args.length == 2) {
         let pos = parseInt(args[1]);
         if (pos > serverQueue.songs.length-1) {
@@ -551,7 +571,7 @@ function showQueue(message,serverQueue){
         return message.channel.send("You have to be in a voice channel to view the queue.");
     }
     if (!serverQueue || serverQueue.songs.length == 0) {
-        return message.channel.send('```' + `No song currently playing\n----------------------------\n` + '```').then(msg => setTimeout(() => msg.delete(), 15*1000));
+        return message.channel.send('```' + `No song currently playing\n----------------------------\n` + '```');//.then(msg => setTimeout(() => msg.delete(), 15*1000));
     }
     
     let nowPlaying = serverQueue.songs[0];
@@ -567,7 +587,7 @@ function showQueue(message,serverQueue){
         }
     }
 
-    return message.channel.send('```' + msg + '```').then(msg => setTimeout(() => msg.delete(), duration*1000));
+    return message.channel.send('```' + msg + '```');//.then(msg => setTimeout(() => msg.delete(), duration*1000));
 }
 
 function pause(message, serverQueue){
