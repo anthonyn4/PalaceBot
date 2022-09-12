@@ -4,20 +4,28 @@
     Autoplay related songs
     Seek to a given time ✅
     YouTube playlist support ✅
-    YouTube radio support 
-
+    YouTube radio support ✅
+    
 */
 
 //connection to discord
 const Discord = require('discord.js');
-const {Client, Intents} = require('discord.js');
+const {Client, GatewayIntentBits, Partials} = require('discord.js');
 const {
     prefix,
     token,
 } = require('./config.json');
 
 //instance of the bot
-const client = new Client({ intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_STATES"] });
+const client = new Client({ 
+    intents: [   
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.MessageContent
+    ],
+    partials: [Partials.Channel],
+}); 
 
 const playDL = require('play-dl');
 
@@ -91,6 +99,9 @@ client.on('messageCreate', async message =>{
         case 'skip':
             skip(message, serverQueue);
             break;
+        case 'skipto':
+            skipto(message,serverQueue);
+            break;
         case 'pause':
             pause(message,serverQueue);
              break;
@@ -101,6 +112,7 @@ client.on('messageCreate', async message =>{
         case 'loop':
             loopSong(message, serverQueue);
             break;
+        case 'np':
         case 'q':
         case 'queue':
             showQueue(message,serverQueue);
@@ -147,8 +159,8 @@ async function execute(message, serverQueue) {
     //check the last argument to see if it is a valid time to seek to
     let timeToSeek = parse(args[args.length-1]);
 
-    let song = {};
-    let songs = [];
+    let song = {};  //object containing song data
+    let songs = []; //array of song objects
     let check = await playDL.validate(args[1].trim());
     //console.log(check)  //debug
     if (check === false) {
@@ -196,7 +208,7 @@ async function execute(message, serverQueue) {
             } else if (type === 'playlist') {
                 const playlist = await playDL.playlist_info(args[1], {incomplete: true}) //parse youtube playlist ignoring hidden videos
                 const videos = await playlist.all_videos()
-                console.log(`Fetched ${playlist.total_videos} videos from the playlist`)
+                console.log(`Fetched ${playlist.total_videos} videos from "${playlist.title}"`)
                 videos.forEach(function (video) {
                     song = {
                         title: video.title,
@@ -224,7 +236,7 @@ async function execute(message, serverQueue) {
                 songs.push(song)
             } else if (type === 'playlist'){
                 const tracks = await so.all_tracks()
-                console.log(`Fetched ${so.total_tracks} tracks from the playlist`)
+                console.log(`Fetched ${so.total_tracks} tracks from "${so.name}"`)
                 tracks.forEach(function (track) {
                     song = {
                         title: track.name,
@@ -284,7 +296,7 @@ async function execute(message, serverQueue) {
             loop: false,
             //loopall: false,
             //seek: timeToSeek,
-            keep: false, //whether or not the current song should be kept in the queue
+            keep: false, //whether or not the current song should be kept in the queue, used for skipping songs while looping
             timeoutID: undefined    //separate timeout ID for each guild
             //volume: 5,
             //playing: true
@@ -451,7 +463,7 @@ function skip(message, serverQueue){
     
     if (args.length == 2) {
         let pos = parseInt(args[1]);
-        if (pos > serverQueue.songs.length-1) {
+        if (pos > serverQueue.songs.length-1 || pos < 0) {
             return message.channel.send(`❌ Skip position out of bounds. There are \`${serverQueue.songs.length-1}\` songs in the queue.`)   //return statement to avoid skipping
         } else if (isNaN(pos)) {
             return;
@@ -567,6 +579,9 @@ function loopSong(message, serverQueue){
 }
 
 function showQueue(message,serverQueue){
+    const args = message.content.split(" ");
+    let pos = 999;
+
     if(!message.member.voice.channel){
         return message.channel.send("You have to be in a voice channel to view the queue.");
     }
@@ -574,20 +589,37 @@ function showQueue(message,serverQueue){
         return message.channel.send('```' + `No song currently playing\n----------------------------\n` + '```');//.then(msg => setTimeout(() => msg.delete(), 15*1000));
     }
     
-    let nowPlaying = serverQueue.songs[0];
-    let msg = `Now playing: ${nowPlaying.title}\n----------------------------\n`
-    let length = Math.min(serverQueue.songs.length, 11) 
-    let duration = nowPlaying.duration;
-    for (var i = 1; i < length; i++){
-        if (serverQueue.songs[i].seek > 0){
-            msg += `${i}. ${serverQueue.songs[i].title} starting at ${serverQueue.songs[i].seekTime.minutes}:${serverQueue.songs[i].seekTime.seconds}\n`
-            duration = nowPlaying.duration - nowPlaying.seek;
+    if (args.length == 2){
+        pos = parseInt(args[1]);
+        if (pos < 0 || isNaN(pos)) {
+            return;
         } else {
-            msg += `${i}. ${serverQueue.songs[i].title}\n`;
+            pos = args[1];
         }
     }
+    let nowPlaying = serverQueue.songs[0];
+    let msg = `Now playing: ${nowPlaying.title}\n----------------------------\n`;
+    let msg1 = ``; 
+    let length = Math.min(serverQueue.songs.length, ++pos); //queue includes current playing song, so we want to show current playing + the number of songs to be shown
+    //let duration = nowPlaying.duration;
+    for (var i = 1; i < length; i++){
+        if (serverQueue.songs[i].seek > 0){
+            text = `${i}. ${serverQueue.songs[i].title} starting at ${serverQueue.songs[i].seekTime.minutes}:${serverQueue.songs[i].seekTime.seconds}\n`
+            //duration = nowPlaying.duration - nowPlaying.seek;
+        } else {
+            text = `${i}. ${serverQueue.songs[i].title}\n`;
+        }
 
-    return message.channel.send('```' + msg + '```');//.then(msg => setTimeout(() => msg.delete(), duration*1000));
+        //text can fit in msg even if out of order (Fix) also need to extend this or add pages consider array of messages
+        if (text.length + msg.length < 2000) {
+            msg += text;
+        } else {
+            msg1 += text;
+        }
+    }
+    message.channel.send('```' + msg + '```').then(msg => setTimeout(() => msg.delete(), 60*1000));
+    if (msg1 != ``) { message.channel.send('```' + msg1 + '```').then(msg => setTimeout(() => msg.delete(), 60*1000));}
+
 }
 
 function pause(message, serverQueue){
@@ -635,20 +667,31 @@ function stop(message, serverQueue) {   //same thing as clear i guess
  */
 function help(message){
     const commands = `
-    !play <query|url> -- search for a song or enter a YouTube or SoundCloud URL (Supports playlists)
-    !pause -- pause the current song
-    !resume -- resume the current song 
-    !skip <n> -- skips the current song or remove the nth song from the queue
+    !play <query|url> -- search for a song or enter a YouTube or SoundCloud URL 
+    !pause -- pause the bot
+    !resume -- resume the bot
     !stop -- stops the bot from playing  
-    !queue -- shows all songs in the queue 
-    !clear -- purges all songs in the queue  
-    !loop -- repeats all of the songs in the queue (!loop off to disable the loop)
+
+    !skip <n> -- skips the current song or remove a song from the queue
+    !skipto <n> -- skip to a desired position in the queue
+    !queue <n> -- shows songs in the queue
+    !clear -- removes all songs in the queue  
+    
+    !shuffle -- shuffles the queue
+    !loop -- repeats the queue 
     !seek <mm:ss> -- seek to a desired time in the current playing song\n
     To view these commands again, type !help or !commands
     `
     message.channel.send('```' + commands + '```');//.then(msg => setTimeout(() => msg.delete(), 30*1000));
 }
 
+
+/**
+ * 
+ * @param {String} message  
+ * @param {Object} serverQueue
+ * @returns 
+ */
 function shuffle(message, serverQueue) {
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to stop the music.");
@@ -663,34 +706,6 @@ function shuffle(message, serverQueue) {
     }
     console.log('Shuffled the queue.');
     message.channel.send('🔀 Shuffled the queue.');
-}
-
-/**
- * Given a number, parses it into the form of mm:ss
- * @param {number} input number to parse
- * @returns {object} object containing the parsed data
- */
-function parse(input){ 
-    //console.log(input);
-    if (typeof input == "string" && input.indexOf(":") != -1) { //input in form of mm:ss
-        let time = input.split(":"); 
-        if (isNaN(time[0]) || isNaN(time[1]) || time[0] < 0 || time[1] < 0){
-            //do nothing, move on
-        } else {    //otherwise, parse the given time 
-            let minutes = Number(time[0]*60);
-            let seconds = Number(time[1]);
-            timeToSeek = minutes+seconds;
-            return timeToSeek;
-            //console.log(timeToSeek);
-        }
-    } else if (typeof input == "number"){
-        let minutes = Math.floor(input/60);
-        let seconds = input%60 < 10 ? '0' + input%60 : input%60;
-        //return [minutes, seconds];
-        return {minutes: minutes, seconds: seconds};
-    } else {
-        return 0;
-    }
 }
 
 
@@ -727,8 +742,49 @@ function seek(message,serverQueue) {
 }
 
 function skipto(message,serverQueue){
+    const args = message.content.split(" ");
 
+    if(!message.member.voice.channel){
+        return message.channel.send("❌ You have to be in a voice channel to skip.");
+    }
+    if (!serverQueue || serverQueue.songs.length == 0) {
+        return message.channel.send("❌ No song to skip to.");
+    }
+    let pos = parseInt(args[1]);
+    if(isNaN(pos) || pos < 1 || pos > serverQueue.songs.length-1) {
+        return message.channel.send(`❌ Invalid position. There are \`${serverQueue.songs.length-1}\` songs in the queue.`);
+    }
+    serverQueue.songs.splice(0,pos-1);
+    serverQueue.player.stop();
 }
 
+
+/**
+ * Given a number, parses it into the form of mm:ss
+ * @param {number} input number to parse.
+ * @returns {object} object containing the parsed data.
+ */
+ function parse(input){ 
+    //console.log(input);
+    if (typeof input == "string" && input.indexOf(":") != -1) { //input in form of mm:ss
+        let time = input.split(":"); 
+        if (isNaN(time[0]) || isNaN(time[1]) || time[0] < 0 || time[1] < 0){
+            //do nothing, move on
+        } else {    //otherwise, parse the given time 
+            let minutes = Number(time[0]*60);
+            let seconds = Number(time[1]);
+            timeToSeek = minutes+seconds;
+            return timeToSeek;
+            //console.log(timeToSeek);
+        }
+    } else if (typeof input == "number"){
+        let minutes = Math.floor(input/60);
+        let seconds = input%60 < 10 ? '0' + input%60 : input%60;
+        //return [minutes, seconds];
+        return {minutes: minutes, seconds: seconds};
+    } else {
+        return 0;
+    }
+}
 client.login(token);
 
