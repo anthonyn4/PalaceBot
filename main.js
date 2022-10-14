@@ -29,7 +29,7 @@ const client = new Client({
 
 const playDL = require('play-dl');
 
-const { NoSubscriberBehavior, VoiceConnectionStatus, entersState, getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
+const {VoiceConnectionStatus, entersState, getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
 
 const queue = new Map(); //map of guild ID and its respective queue
 
@@ -46,15 +46,15 @@ client.once('reconnect', () =>{
 
 // client.on('voiceStateUpdate', (oldState, newState) => {
 //     if (newState.channel && !oldState.channel) {
-//       console.log(
-//         `${newState.member.displayName} has joined the voice channel "${newState.channel.name}"`
-//       );
+//     //   console.log(
+//     //     `${newState.member.displayName} has joined the voice channel "${newState.channel.name}"`
+//     //   );
 //     }
 //     if (!newState.channel && oldState.channel) {
-//       console.log(
-//         `${oldState.member.displayName} has left the voice channel "${oldState.channel.name}"`
-//       );
-//       queue.delete(oldState.guild.id);
+//     //   console.log(
+//     //     `${oldState.member.displayName} has left the voice channel "${oldState.channel.name}"`
+//     //   );
+        
 //     }  
 //     // if (newState.channel && oldState.channel) {
 //     //   if (newState.channel.id !== oldState.channel.id) {
@@ -120,14 +120,16 @@ client.on('messageCreate', async message =>{
         case 'clear':
             clear(message, serverQueue);
             break;
-        case 'stop':    
-            stop(message,serverQueue);
-            break;
         case 'shuffle':
             shuffle(message,serverQueue);
             break;
         case 'seek':
             seek(message,serverQueue);
+            break;
+        case 'stop':    
+        case 'kick':
+        case 'remove': 
+            kick(message,serverQueue);
             break;
         case 'help':
         case 'commands':
@@ -166,7 +168,7 @@ async function execute(message, serverQueue) {
     if (check === false) {
         return message.channel.send("❌ Failed to validate URL or search.");
     } else if (check === 'search') {
-        let query = message.content.substring(message.content.indexOf(' '),timeToSeek ? message.content.lastIndexOf(' ') : message.content.length).trim();
+        let query = message.content.substring(message.content.indexOf(' '),timeToSeek ? message.content.lastIndexOf(' ') : message.content.length).trim(); //if timetoseek is non-zero, go to last space (omit seek time) otherwise accept whole message
         console.log(`${message.author.username} searched for '${query}' 🔎`);
         const searchMsg = await message.channel.send(`Searching for '${query}' 🔎`);
         const search = await playDL.search(query, {
@@ -331,6 +333,7 @@ async function execute(message, serverQueue) {
                     // Seems to be reconnecting to a new channel - ignore disconnect
                 } catch (error) {
                     // Seems to be a real disconnect which SHOULDN'T be recovered from
+                    console.log(`Forcibly destroyed the bot.`);
                     connection.destroy();
                     queue.delete(message.guild.id);
                 }
@@ -354,7 +357,7 @@ async function execute(message, serverQueue) {
                 //return message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`);
             } else {
                 if (song.seek > 0){
-                    console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue seeking to ${song.seekTime.minutes}:${song.seekTime.seconds}`);
+                    console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue starting at ${song.seekTime.minutes}:${song.seekTime.seconds}`);
                     return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
                 } else {
                     console.log(`Added ${song.title} to the queue. {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
@@ -661,6 +664,18 @@ function stop(message, serverQueue) {   //same thing as clear i guess
     serverQueue.player.stop();
 }
 
+function kick(message, serverQueue){
+    if(!message.member.voice.channel){
+        return message.channel.send("❌ You have to be in a voice channel to kick the bot");
+    }
+    if (!serverQueue) {
+        return message.channel.send("❌ No bot to kick.");
+    }
+    console.log(`Kicked the bot.`);
+    serverQueue.connection.destroy();
+    queue.delete(message.guild.id);
+}
+
 /**
  * Displays the list of commands
  * @param {*} message  
@@ -670,7 +685,7 @@ function help(message){
     !play <query|url> -- search for a song or enter a YouTube or SoundCloud URL 
     !pause -- pause the bot
     !resume -- resume the bot
-    !stop -- stops the bot from playing  
+    !stop || !kick -- bye bye bot ! 
 
     !skip <n> -- skips the current song or remove a song from the queue
     !skipto <n> -- skip to a desired position in the queue
@@ -726,14 +741,14 @@ function seek(message,serverQueue) {
     //console.log(seekTime);
     let maxDuration = serverQueue.songs[0].duration;
     let maxTime = parse(maxDuration);
-    if (timeToSeek > maxDuration){ 
+    if (timeToSeek > maxDuration || timeToSeek < 0){ 
         //console.log(maxDuration)
-        console.log(`Seek exceeded song limits, requested ${timeToSeek}, max is ${maxDuration}`);
-        return message.channel.send(`❌ Seeking beyond limits. <0-${maxTime.minutes}:${maxTime.seconds}>`);
-    } else if (timeToSeek < 0) {
-        console.log(`Seek below zero, requested ${timeToSeek}, max is ${maxDuration}`);
-        return message.channel.send(`❌ Seeking below zero. <0-${maxTime.minutes}:${maxTime.seconds}>`);
-    }
+        console.log(`Seek failed, requested ${timeToSeek}, max is ${maxDuration}`);
+        return message.channel.send(`❌ Invalid timestamp. <0-${maxTime.minutes}:${maxTime.seconds}>`);
+    } 
+    //else if (timeToSeek == 0) {
+    //     return message.channel.send(`❌ Specify a timestamp. <0-${maxTime.minutes}:${maxTime.seconds}>`);
+    // }
     let currentSong = serverQueue.songs[0];
     currentSong.seek = timeToSeek;
     currentSong.seekTime = seekTime;
@@ -769,7 +784,7 @@ function skipto(message,serverQueue){
     if (typeof input == "string" && input.indexOf(":") != -1) { //input in form of mm:ss
         let time = input.split(":"); 
         if (isNaN(time[0]) || isNaN(time[1]) || time[0] < 0 || time[1] < 0){
-            //do nothing, move on
+            //
         } else {    //otherwise, parse the given time 
             let minutes = Number(time[0]*60);
             let seconds = Number(time[1]);
