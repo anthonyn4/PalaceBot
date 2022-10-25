@@ -27,7 +27,7 @@ const client = new Client({
     partials: [Partials.Channel],
 }); 
 
-const playDL = require('play-dl');
+const playDL = require('play-dl2');
 
 const {VoiceConnectionStatus, entersState, getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
 
@@ -339,12 +339,24 @@ async function execute(message, serverQueue) {
                 }
             });
 
+            const userCheck = setInterval( () => {
+                //console.log(voiceChannel.members.size);
+                if (voiceChannel.members.size == 1) {
+                    connection.destroy();
+                    queue.delete(message.guild.id);
+                    clearInterval(userCheck);
+                    console.log(`No active users, bot has disconnected.`);
+                } 
+            }, 60 * 1000); 
+
             play(message.guild, queueConstructor.songs[0]);
         } catch (err) {
             console.log(err);
             queue.delete(message.guild.id); //on error, trash the serverqueue
             return message.channel.send(err);
         }
+
+ 
 
     } else {
         //console.log(serverQueue.songs.length);
@@ -664,6 +676,11 @@ function stop(message, serverQueue) {   //same thing as clear i guess
     serverQueue.player.stop();
 }
 
+/**
+ * Removes and cleans up the bot from the provided serverQueue
+ * @param {String} message
+ * @param {Object} serverQueue
+ */
 function kick(message, serverQueue){
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to kick the bot");
@@ -678,7 +695,7 @@ function kick(message, serverQueue){
 
 /**
  * Displays the list of commands
- * @param {*} message  
+ * @param {String} message  
  */
 function help(message){
     const commands = `
@@ -702,7 +719,7 @@ function help(message){
 
 
 /**
- * 
+ * Shuffles the queue of songs in the provided serverQueue
  * @param {String} message  
  * @param {Object} serverQueue
  * @returns 
