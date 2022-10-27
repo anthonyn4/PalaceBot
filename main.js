@@ -133,7 +133,7 @@ client.on('messageCreate', async message =>{
             break;
         case 'help':
         case 'commands':
-        default:
+        //default:
            // message.channel.send("You need to enter a valid command!");
             help(message);
             break;
