@@ -342,10 +342,10 @@ async function execute(message, serverQueue) {
             const userCheck = setInterval( () => {
                 //console.log(voiceChannel.members.size);
                 if (voiceChannel.members.size == 1) {
-                    connection.destroy();
-                    queue.delete(message.guild.id);
                     clearInterval(userCheck);
-                    console.log(`No active users, bot has disconnected.`);
+                    connection.destroy();
+                    queue.delete(message.guild.id)
+                    console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
                 } 
             }, 60 * 1000); 
 
@@ -390,9 +390,12 @@ function destroy(guild){
 async function play(guild, song){
     const serverQueue = queue.get(guild.id);
 
+ 
+
     //if no song to be played, idle for 300 seconds (5 min) before destroying connection
     if (!song) {
         serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
+            //clearInterval(userCheck);
             console.log(`Timeout for "${guild.name}"`);
             destroy(guild);
             serverQueue.timeoutID = undefined;  //after timeout goes off, reset timeout value.
