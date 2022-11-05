@@ -13,6 +13,7 @@
     "discord.js": "^14.3.0",
     "ffmpeg-static": "^4.4.1",
     "libsodium-wrappers": "^0.7.10",
-    "play-dl": "github:k2helix/play-dl-compiled"
+    "play-dl": "^1.9.5",
+    "play-dl2": "^1.9.6"
   }
 }
