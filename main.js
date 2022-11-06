@@ -339,15 +339,6 @@ async function execute(message, serverQueue) {
                 }
             });
 
-            const userCheck = setInterval( () => {
-                //console.log(voiceChannel.members.size);
-                if (voiceChannel.members.size == 1) {
-                    clearInterval(userCheck);
-                    connection.destroy();
-                    queue.delete(message.guild.id)
-                    console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
-                } 
-            }, 60 * 1000); 
 
             play(message.guild, queueConstructor.songs[0]);
         } catch (err) {
@@ -390,9 +381,18 @@ function destroy(guild){
 async function play(guild, song){
     const serverQueue = queue.get(guild.id);
 
- 
-
+    //weird bug
+    // const userCheck = setInterval( () => {
+    //     //console.log(voiceChannel.members.size);
+    //     if (serverQueue.voiceChannel.members.size == 1) {
+    //         clearInterval(userCheck);
+    //         destroy(guild);
+    //         console.log(`No active users, bot has disconnected from "${guild.name}"`);
+    //     } 
+    // }, 60 * 1000); 
     //if no song to be played, idle for 300 seconds (5 min) before destroying connection
+
+    //*BUG* userCheck interval still emits after timeout
     if (!song) {
         serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
             //clearInterval(userCheck);
