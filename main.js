@@ -145,7 +145,6 @@ client.on('messageCreate', async message =>{
 async function execute(message, serverQueue) {
     const args = message.content.split(" ");
     const voiceChannel = message.member.voice.channel;
-
     if (!voiceChannel){
         return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
        //return message.channel.send("You need to be in a channel to play music.");
@@ -156,10 +155,14 @@ async function execute(message, serverQueue) {
     //     //return message.channel.send("You don't have permission to do that.")
     // };
 
-    if(args.length == 1) {return message.channel.send("Specify a search or URL to play 🤓")};   //someone invokes play command without any arguments
+    if (args.length == 1) {//someone invokes play command without any arguments
+        return message.channel.send("Specify a search or URL to play 🤓")
+    } 
+ 
+
     
     //check the last argument to see if it is a valid time to seek to
-    let timeToSeek = parse(args[args.length-1]);
+    //let timeToSeek = parse(args[args.length-1]);
 
     let song = {};  //object containing song data
     let songs = []; //array of song objects
@@ -168,14 +171,24 @@ async function execute(message, serverQueue) {
     if (check === false) {
         return message.channel.send("❌ Failed to validate URL or search.");
     } else if (check === 'search') {
-        let query = message.content.substring(message.content.indexOf(' '),timeToSeek ? message.content.lastIndexOf(' ') : message.content.length).trim(); //if timetoseek is non-zero, go to last space (omit seek time) otherwise accept whole message
-        console.log(`${message.author.username} searched for '${query}' 🔎`);
+        let searchSource = {youtube: 'video'};  //where we want to perform the search and what type of result
+        let query = message.content.substring(message.content.indexOf(' '), message.content.length).trim();
+        if (args[1].trim() == 'sc' || args[1].trim() == 'soundcloud') { //check if the second string in the query is a specifier
+            searchSource = {soundcloud : 'tracks'};
+            query = message.content.substring(message.content.indexOf(' ', message.content.indexOf(' ')+1), message.content.length).trim();
+            console.log(`${message.author.username} searched for '${query}' on SoundCloud🔎`);
+        } else {
+            console.log(`${message.author.username} searched for '${query}' on YouTube🔎`);
+        }
+        //let query = message.content.substring(message.content.indexOf(' '),timeToSeek ? message.content.lastIndexOf(' ') : message.content.length).trim(); //if timetoseek is non-zero, go to last space (omit seek time) otherwise accept whole message
         const searchMsg = await message.channel.send(`Searching for '${query}' 🔎`);
         const search = await playDL.search(query, {
-            limit: 1
+            limit: 1,
+            source: searchSource
         })
         searchMsg.delete();
         //console.log(search)
+        //console.log(searchSource);
         if (search.length == 0){    
             return message.channel.send(`No results found for  '${query}'  😢`);
         } else {
@@ -184,11 +197,15 @@ async function execute(message, serverQueue) {
                 url: search[0].url,
                 duration: search[0].durationInSec,
                 durationTime: parse(search[0].durationInSec),
-                seek: timeToSeek,
-                seekTime: parse(timeToSeek),
+                //seek: timeToSeek,
+                //seekTime: parse(timeToSeek),
                 source: 'yt'
             }
-            songs.push(song)
+            if ('soundcloud' in searchSource){
+                song.title = search[0].name;
+                song.source = 'so';
+            }
+            songs.push(song);
         }
     } else {
         let source = check.split("_")[0]
@@ -202,8 +219,8 @@ async function execute(message, serverQueue) {
                     url: video.video_details.url,
                     duration: video.video_details.durationInSec,
                     durationTime: parse(video.video_details.durationInSec),
-                    seek: timeToSeek,
-                    seekTime: parse(timeToSeek),
+                    //seek: timeToSeek,
+                    //seekTime: parse(timeToSeek),
                     source: 'yt'
                 }
                 songs.push(song)
@@ -217,8 +234,8 @@ async function execute(message, serverQueue) {
                         url: video.url,
                         duration: video.durationInSec,
                         durationTime: parse(video.durationInSec),
-                        seek: timeToSeek,
-                        seekTime: parse(timeToSeek),
+                        //seek: timeToSeek,
+                        //seekTime: parse(timeToSeek),
                         source: 'yt'
                     }
                     songs.push(song)
@@ -274,15 +291,15 @@ async function execute(message, serverQueue) {
     }
 
     //console.log(song);
-    if(song.source === 'yt'){
-        let maxDuration = song.duration;
-        if (timeToSeek > maxDuration){ 
-            //console.log(maxDuration)
-            let maxTime = parse(maxDuration);
-            console.log(`Seek exceeded song limits, requested ${timeToSeek}, max is ${maxDuration}`);
-            return message.channel.send(`❌ Seeking beyond limits. <0-${maxTime.minutes}:${maxTime.seconds}>`);
-        }
-    }
+    // if(song.source === 'yt'){
+    //     let maxDuration = song.duration;
+    //     if (timeToSeek > maxDuration){ 
+    //         //console.log(maxDuration)
+    //         let maxTime = parse(maxDuration);
+    //         console.log(`Seek exceeded song limits, requested ${timeToSeek}, max is ${maxDuration}`);
+    //         return message.channel.send(`❌ Seeking beyond limits. <0-${maxTime.minutes}:${maxTime.seconds}>`);
+    //     }
+    // }
 
     /*if no server queue exists, create one with the following parameters, 
      assign the current guild id to the serverqueue, 
@@ -381,7 +398,6 @@ function destroy(guild){
 async function play(guild, song){
     const serverQueue = queue.get(guild.id);
 
-    //weird bug
     // const userCheck = setInterval( () => {
     //     //console.log(voiceChannel.members.size);
     //     if (serverQueue.voiceChannel.members.size == 1) {
@@ -390,15 +406,18 @@ async function play(guild, song){
     //         console.log(`No active users, bot has disconnected from "${guild.name}"`);
     //     } 
     // }, 60 * 1000); 
-    //if no song to be played, idle for 300 seconds (5 min) before destroying connection
 
-    //*BUG* userCheck interval still emits after timeout
+    //*BUG* userCheck interval still emits after timeout and after kick
     if (!song) {
         serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
             //clearInterval(userCheck);
-            console.log(`Timeout for "${guild.name}"`);
-            destroy(guild);
-            serverQueue.timeoutID = undefined;  //after timeout goes off, reset timeout value.
+            if (getVoiceConnection(guild.id) != undefined) {
+                console.log(`Timeout for "${guild.name}"`);
+                destroy(guild);
+                serverQueue.timeoutID = undefined;  //after timeout goes off, reset timeout value.
+            } else {
+                console.log("Connection was destroyed during the timeout.");
+            }
         }, 10 * 60 * 1000); //10 min idle
         console.log(`Timeout set for "${guild.name}"`);
         if (serverQueue.loop == true){
@@ -417,13 +436,16 @@ async function play(guild, song){
     
     let stream;
     //console.log(song.source);
+   
     if (song.source === 'yt' && song.seek > 0){  //only yt songs can be seeked, but there are songs from various sources in the playlist
         console.log(`Seeked ${song.seek} seconds into the song.`);
         stream = await playDL.stream(song.url, {seek: song.seek});
     } else {
-        stream = await playDL.stream(song.url);
+        //console.trace();
+        stream = await playDL.stream(song.url);  
     }
-
+  
+  
     let resource = createAudioResource(stream.stream, {
         inputType: stream.type
     });
