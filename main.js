@@ -791,7 +791,7 @@ function skip(message, serverQueue){
             });
         }
         if (pos < 0) {
-            return message.channel.send(`❌ No song in queue with keyword \`${args[1]}\`.`);
+            return message.channel.send(`❌ No song in queue with keyword \`${query}\`.`);
         } 
     } else if (pos > serverQueue.songs.length-1 || pos < 0) { 
         return message.channel.send(`❌ Skip position out of bounds. There are \*\*${serverQueue.songs.length-1}\*\* songs in the queue.`)   //return statement to avoid skipping
@@ -830,7 +830,7 @@ function skipto(message,serverQueue){
             });
         }
         if (pos < 0) {
-            return message.channel.send(`❌ No song in queue with keyword \`${args[1]}\`.`);
+            return message.channel.send(`❌ No song in queue with keyword \`${query}\`.`);
         } 
     } else if (pos < 0 || pos > serverQueue.songs.length-1){
         return message.channel.send(`❌ Skip position out of bounds. There are \*\*${serverQueue.songs.length-1}\*\* songs in the queue.`);
