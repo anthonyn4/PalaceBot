@@ -27,7 +27,7 @@ const client = new Client({
     partials: [Partials.Channel],
 }); 
 
-const playDL = require('play-dl2');
+const playDL = require('play-dl');
 
 const {VoiceConnectionStatus, entersState, getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
 
@@ -406,7 +406,9 @@ function destroy(guild){
 
 async function play(guild, song){
     const serverQueue = queue.get(guild.id);
-
+    // if (guild.id in queue){
+    //     queue.delete(guild.id);
+    // }
 
     if (!song) {
         serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
@@ -491,61 +493,6 @@ async function play(guild, song){
         //showQueue(serverQueue);
     }
 }
-
-function skip(message, serverQueue){
-    const args = message.content.split(" ");
-
-    if (!message.member.voice.channel) {
-        return message.channel.send("❌ You have to be in a voice channel to skip the song.");
-    }
-    if (!serverQueue || serverQueue.songs.length == 0){
-        return message.channel.send("❌ No songs to skip.");
-    }
-    
-    if (args.length == 2) {
-        let pos = parseInt(args[1]); //check if position is an integer
-        if (isNaN(pos)) { //skip by keyword
-            let index = -1;
-            if (args[1] == 'last' || args[1] == 'end') { //check certain keywords first
-                 index = serverQueue.songs.length-1;
-            } else {   //otherwise find a match
-                const regex = new RegExp(args[1], 'i'); //case insensitive regex
-                index = serverQueue.songs.findIndex(function (song) { //find position of a song title matching keyword
-                    return regex.test(song.title); 
-                });
-            }
-            if (index < 0) {
-                return message.channel.send(`No song in queue matching keyword \`${args[1]}\`.`);
-            } else {
-                console.log(`Removed ${serverQueue.songs[index].title} from the queue.`);
-                message.channel.send(`Removed \*\*${serverQueue.songs[index].title}\*\* from the queue.`);//.then(msg => setTimeout(() => msg.delete(), 30*1000));
-                if (index > 0) {
-                    serverQueue.songs.splice(index,1);
-                } else {
-                    serverQueue.player.stop();
-                }
-            }
-        } else if (pos > serverQueue.songs.length-1 || pos < 0) { 
-            return message.channel.send(`❌ Skip position out of bounds. There are \*\*${serverQueue.songs.length-1}\*\* songs in the queue.`)   //return statement to avoid skipping
-        } else {
-            console.log(`Removed ${serverQueue.songs[pos].title} from the queue.`);
-            message.channel.send(`Removed \*\*${serverQueue.songs[pos].title}\*\* from the queue.`);//.then(msg => setTimeout(() => msg.delete(), 30*1000));    
-            if (pos == 0){  //removing the current playing song results in a skip
-                serverQueue.player.stop();
-            } else {    //otherwise just delete the song from the queue
-                serverQueue.songs.splice(pos,1);    
-            }
-        }
-    } else if (args.length == 1){
-        serverQueue.player.stop();     //AudioPlayer stop method to skip to next song
-        console.log(`Skipped ${serverQueue.songs[0].title}.`);
-        message.channel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\*.`);
-            //.then(msg => setTimeout(() => msg.delete(), 30 * 1000)); //delete after 30 seconds
-    } else {
-        help(message);
-    }
-    serverQueue.keep = false; //don't keep skipped song in the queue
- }
 
 
 function clear(message, serverQueue){
@@ -816,23 +763,95 @@ function seek(message,serverQueue) {
     serverQueue.player.stop();
 }
 
+function skip(message, serverQueue){
+    const args = message.content.split(" ");
+
+    if (!message.member.voice.channel) {
+        return message.channel.send("❌ You have to be in a voice channel to skip the song.");
+    }
+    if (!serverQueue || serverQueue.songs.length == 0){
+        return message.channel.send("❌ No songs to skip.");
+    }
+    
+    if (args.length == 2) {
+        let pos = parseInt(args[1]); //check if position is an integer
+        if (isNaN(pos)) { //skip by keyword
+            let query = message.content.substring(message.content.indexOf(' '), message.content.length).trim();
+            let index = -1;
+            if (args[1] == 'last' || args[1] == 'end') { //check certain keywords first
+                 index = serverQueue.songs.length-1;
+            } else {   //otherwise find a match
+                const regex = new RegExp(args[1], 'i'); //case insensitive regex
+                index = serverQueue.songs.findIndex(function (song) { //find position of a song title matching keyword
+                    return regex.test(song.title); 
+                });
+            }
+            if (index < 0) {
+                return message.channel.send(`No song in queue matching keyword \`${args[1]}\`.`);
+            } else {
+                console.log(`Removed ${serverQueue.songs[index].title} from the queue.`);
+                message.channel.send(`Removed \*\*${serverQueue.songs[index].title}\*\* from the queue.`);//.then(msg => setTimeout(() => msg.delete(), 30*1000));
+                if (index > 0) {
+                    serverQueue.songs.splice(index,1);
+                } else {
+                    serverQueue.player.stop();
+                }
+            }
+        } else if (pos > serverQueue.songs.length-1 || pos < 0) { 
+            return message.channel.send(`❌ Skip position out of bounds. There are \*\*${serverQueue.songs.length-1}\*\* songs in the queue.`)   //return statement to avoid skipping
+        } else {
+            console.log(`Removed ${serverQueue.songs[pos].title} from the queue.`);
+            message.channel.send(`Removed \*\*${serverQueue.songs[pos].title}\*\* from the queue.`);//.then(msg => setTimeout(() => msg.delete(), 30*1000));    
+            if (pos == 0){  //removing the current playing song results in a skip
+                serverQueue.player.stop();
+            } else {    //otherwise just delete the song from the queue
+                serverQueue.songs.splice(pos,1);    
+            }
+        }
+    } else if (args.length == 1){
+        serverQueue.player.stop();     //AudioPlayer stop method to skip to next song
+        console.log(`Skipped ${serverQueue.songs[0].title}.`);
+        message.channel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\*.`);
+            //.then(msg => setTimeout(() => msg.delete(), 30 * 1000)); //delete after 30 seconds
+    } else {
+        help(message);
+    }
+    serverQueue.keep = false; //don't keep skipped song in the queue
+ }
+
 function skipto(message,serverQueue){
     const args = message.content.split(" ");
     let pos = parseInt(args[1]);
+    let song;
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to skip.");
     }
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to skip to.");
     }
-    if (args[1] == 'end' || args[1] == 'last'){
-        pos = serverQueue.songs.length-1;
-    } else if (isNaN(pos) || pos < 1 || pos > serverQueue.songs.length-1) {
-        return message.channel.send(`❌ Invalid position. There are \`${serverQueue.songs.length-1}\` songs in the queue.`);
+    if (isNaN(pos)) { //skip by keyword
+        //let index = -1;
+        if (args[1] == 'last' || args[1] == 'end') { //check certain keywords first
+            pos = serverQueue.songs.length-1;
+        } else {   //otherwise find a match
+            const regex = new RegExp(args[1], 'i'); //case insensitive regex
+            pos = serverQueue.songs.findIndex(function (s) { //find position of a song title matching keyword
+                return regex.test(s.title); 
+            });
+        }
+        if (pos < 0) {
+            return message.channel.send(`❌ No song in queue matching keyword \`${args[1]}\`.`);
+        } 
+    } else if (pos < 1 || pos > serverQueue.songs.length-1){
+        return message.channel.send(`❌ There are \`${serverQueue.songs.length-1}\` songs in the queue.`);
+    } else if (pos == 0) {
+        return message.channel.send(`❌ The song is already playing.`);
     }
-    serverQueue.songs.splice(0,pos-1);
-    serverQueue.player.stop();
+    song = serverQueue.songs.splice(pos,1);     //remove the song (splice returns array)
+    serverQueue.songs.splice(1,0,song[0]);      //make it the next song
+    serverQueue.player.stop();                  //skip current playing song 
 }
+
 
 
 /**
