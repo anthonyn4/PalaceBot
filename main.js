@@ -128,6 +128,7 @@ client.on('messageCreate', async message =>{
             break;
         case 'stop':    
         case 'kick':
+        case 'leave':
         case 'remove': 
             kick(message,serverQueue);
             break;
@@ -307,7 +308,7 @@ async function execute(message, serverQueue) {
     */
     if (!serverQueue) {
         const queueConstructor = {
-            textChannel: message.channel,
+            //textChannel: message.channel,
             voiceChannel: voiceChannel,
             connection: null,
             songs: songs,
@@ -341,7 +342,7 @@ async function execute(message, serverQueue) {
             );
 
             //check if bot is moving channels or forcibly disconnected
-            connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
+            connection.once(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
                 try {
                     await Promise.race([
                         entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
@@ -356,6 +357,19 @@ async function execute(message, serverQueue) {
                 }
             });
 
+            // connection.once('stateChange', (oldState, newState) => {
+            //     const oldNetworking = Reflect.get(oldState, 'networking');
+            //     const newNetworking = Reflect.get(newState, 'networking');
+              
+            //     const networkStateChangeHandler = (oldNetworkState, newNetworkState) => {
+            //       const newUdp = Reflect.get(newNetworkState, 'udp');
+            //       clearInterval(newUdp?.keepAliveInterval);
+            //     }
+              
+            //     oldNetworking?.off('stateChange', networkStateChangeHandler);
+            //     newNetworking?.on('stateChange', networkStateChangeHandler);
+            //   });
+
             const userCheck = setInterval( () => {
                 //console.log(voiceChannel.members.size);
                 if (voiceChannel.members.size == 1 && getVoiceConnection(message.guild.id) != undefined) {
@@ -364,9 +378,8 @@ async function execute(message, serverQueue) {
                     console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
                 } 
             }, 60 * 1000); 
-            //*BUG* userCheck interval still emits after timeout and after kick
 
-            play(message.guild, queueConstructor.songs[0]);
+            play(message, message.guild, queueConstructor.songs[0]);
         } catch (err) {
             console.log(err);
             queue.delete(message.guild.id); //on error, trash the serverqueue
@@ -376,24 +389,22 @@ async function execute(message, serverQueue) {
  
 
     } else {
-        //console.log(serverQueue.songs.length);
-        if (serverQueue.songs.length == 0) {    //check if queue is empty prior to adding songs
-            serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue  
-            play(message.guild, serverQueue.songs[0]);
+        if (serverQueue.songs.length == 0) {   //if queue was empty, begin playing the first song 
+            serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue, needs to be done after the length is checked 
+            play(message, message.guild, serverQueue.songs[0]);
         } else {
             serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue
+   
             if (songs.length > 1) {
-                //return message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`);
+                //don't display anything
             } else {
-                if (song.seek > 0){
-                    console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue starting at ${song.seekTime.minutes}:${song.seekTime.seconds}`);
-                    return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
-                } else {
-                    console.log(`Added ${song.title} to the queue. {${song.durationTime.minutes}:${song.durationTime.seconds}}`);
-                    return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue. `);
-                }
+                // if (song.seek > 0){ 
+                //     console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue starting at ${song.seekTime.minutes}:${song.seekTime.seconds}`);
+                //     return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
+                // } 
+                console.log(`Added ${songs[0].title} to the queue. {${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}}`);
+                return message.channel.send(`\*\*${songs[0].title}\*\* \`${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}\` has been added to the queue. `);
             }
-            //showQueue(serverQueue);
         }
     }
     //setTimeout(() => {message.delete(), 30*1000}); //delete user message after 30 seconds
@@ -404,38 +415,37 @@ function destroy(guild){
     queue.delete(guild.id);
 }
 
-async function play(guild, song){
+async function play(message, guild, song){
     const serverQueue = queue.get(guild.id);
     // if (guild.id in queue){
     //     queue.delete(guild.id);
     // }
-
-    if (!song) {
-        serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
-            //clearInterval(userCheck);
-            if (getVoiceConnection(guild.id) != undefined) {
-                //console.log(getVoiceConnection(guild.id));
-                console.log(`Timeout for "${guild.name}"`);
-                destroy(guild);
-                serverQueue.timeoutID = undefined;  //after timeout goes off, reset timeout value.
-            } else {
-                console.log("Bot was disconnected during the timeout.");
-            }
-        }, 10 * 60 * 1000); //10 min idle
-        console.log(`Timeout set for "${guild.name}"`);
-        if (serverQueue.loop == true){
-            serverQueue.loop = false;   //if there is no song to be played, disable the loop, no point looping an empty queue
-            console.log('Disabled the loop.');
-        }
-        return;
-    }
+     if (!song) {
+    //     serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
+    //         //clearInterval(userCheck);
+    //         if (getVoiceConnection(guild.id) != undefined) {
+    //             //console.log(getVoiceConnection(guild.id));
+    //             console.log(`Timeout for "${guild.name}"`);
+    //             destroy(guild);
+    //             serverQueue.timeoutID = undefined;  //after timeout goes off, reset timeout value.
+    //         } else {
+    //             console.log("Bot was disconnected during the timeout.");
+    //         }
+    //     }, 10 * 60 * 1000); //10 min idle
+    //     console.log(`Timeout set for "${guild.name}"`);
+    //     if (serverQueue.loop == true){
+    //         serverQueue.loop = false;   //if there is no song to be played, disable the loop, no point looping an empty queue
+    //         console.log('Disabled the loop.');
+    //     }
+         return;
+     }
     
     //if song is queued during timeout, clear timeout
-    if (serverQueue.timeoutID != undefined){    
-        console.log(`Timeout cleared for "${guild.name}"`);
-        clearTimeout(serverQueue.timeoutID);
-        serverQueue.timeoutID = undefined;
-    } 
+    // if (serverQueue.timeoutID != undefined){    
+    //     console.log(`Timeout cleared for "${guild.name}"`);
+    //     clearTimeout(serverQueue.timeoutID);
+    //     serverQueue.timeoutID = undefined;
+    // } 
     
     let stream;
     //console.log(song.source);
@@ -476,7 +486,7 @@ async function play(guild, song){
                 serverQueue.keep = true;    //reset keep flag after skipping in a loop
             }
         }
-        play(guild, serverQueue.songs[0]);
+        play(message, guild, serverQueue.songs[0]);
     })
 
     console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${guild.name}"`); //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
@@ -484,10 +494,10 @@ async function play(guild, song){
         // don't print anything
     } else {
         if (song.seek > 0){
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`);
+            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`);
                 //.then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
         } else {
-            serverQueue.textChannel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
+            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
                 //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         }
         //showQueue(serverQueue);
@@ -636,7 +646,7 @@ function pause(message, serverQueue){
     }
     console.log(`Song paused.`);
     serverQueue.player.pause();
-    return message.channel.send("⏸️ Paused song.")
+    return message.channel.send("⏸️ Paused song. (type !resume to continue playing)")
 }
 
 function resume(message, serverQueue){
@@ -689,19 +699,19 @@ function kick(message, serverQueue){
  */
 function help(message){
     const commands = `
-    !play <query|url> -- search for a song or enter a YouTube or SoundCloud URL 
+    !play query|url -- search for a song or enter a YouTube or SoundCloud URL 
     !pause -- pause the bot
     !resume -- resume the bot
-    !stop || !kick -- bye bye bot ! 
+    !stop/kick/leave -- bye bye bot ! 
 
-    !skip <n> -- skips the current song or remove a song from the queue
-    !skipto <n> -- skip to a desired position in the queue
-    !queue <n> -- shows songs in the queue
+    !skip number|query -- search for a song to skip in the queue by number or query
+    !skipto number|query -- search for a song to jump to in the queue by number or query
+    !queue n -- shows (up to n) songs in the queue 
     !clear -- removes all songs in the queue  
     
     !shuffle -- shuffles the queue
     !loop -- repeats the queue 
-    !seek <mm:ss> -- seek to a desired time in the current playing song\n
+    !seek mm:ss -- seek to a desired time in the current playing song\n
     To view these commands again, type !help or !commands
     `
     message.channel.send('```' + commands + '```');//.then(msg => setTimeout(() => msg.delete(), 30*1000));
@@ -740,7 +750,7 @@ function seek(message,serverQueue) {
         return message.channel.send("❌ No song to seek.");
     }
     if(serverQueue.songs[0].source != 'yt'){ 
-        return message.channel.send("❌ Song must be from YouTube to seek!");
+        return message.channel.send("❌ Song must be from YouTube to seek.");
     }
     let timeToSeek = parse(args[1]);
     let seekTime = parse(timeToSeek);
