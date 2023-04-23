@@ -96,15 +96,20 @@ client.on('messageCreate', async message =>{
             execute(message, serverQueue);
             break;
         case 'next':
+        case 'remove':
         case 'skip':
             skip(message, serverQueue);
             break;
         case 'skipto':
             skipto(message,serverQueue);
             break;
+        case 'vol':
+        case 'volume':
+            volume(message,serverQueue);
+            break;
         case 'pause':
             pause(message,serverQueue);
-             break;
+            break;
         case 'resume':
             resume(message, serverQueue);
             break;
@@ -129,7 +134,6 @@ client.on('messageCreate', async message =>{
         case 'stop':    
         case 'kick':
         case 'leave':
-        case 'remove': 
             kick(message,serverQueue);
             break;
         case 'help':
@@ -168,11 +172,11 @@ async function execute(message, serverQueue) {
     let song = {};  //object containing song data
     let songs = []; //array of song objects
     let check = await playDL.validate(args[1].trim());
+    let searchSource = {youtube: 'video'};  //where we want to perform the search and what type of result
     //console.log(check)  //debug
     if (check === false) {
         return message.channel.send("❌ Failed to validate URL or search.");
     } else if (check === 'search') {
-        let searchSource = {youtube: 'video'};  //where we want to perform the search and what type of result
         let query = message.content.substring(message.content.indexOf(' '), message.content.length).trim();
         if (args[1].trim() == '-sc' || args[1].trim() == '-soundcloud') { //check if the second string in the query is a specifier  (change to parse all dash prefixes as arguments)
             searchSource = {soundcloud : 'tracks'};
@@ -270,24 +274,78 @@ async function execute(message, serverQueue) {
                 message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`)
             }
         } else if (source === 'sp'){
-            return message.channel.send("Spotify is currently not supported. Refer to https://play-dl.github.io/modules.html#stream for more information.")
-            // const spot = await playDL.spotify(args[1])
-            // if (type === 'track') {
-            //     song = {
-            //         title: track.name,
-            //         url: track.url
-            //     }
-            //     songs.push(song)
-            // } else if (type === 'album' || type === 'playlist') {
-            //     const tracks = await spot.all_tracks()
-            //     tracks.forEach(function (track) {
-            //         song = {
-            //             title: track.name,
-            //             url: track.url
-            //         }
-            //         songs.push(song)
-            //     })
-            // }
+            //return message.channel.send("Spotify is currently not supported. Refer to https://play-dl.github.io/modules.html#stream for more information.")
+            const spot = await playDL.spotify(args[1])
+            console.log(type);
+            if (type === 'track') {
+                console.log(spot.artists[0].name);
+                const search = await playDL.search(`${spot.name} ${spot.artists[0].name}`, {
+                    limit: 1,
+                    source: searchSource
+                })
+                if (search.length == 0) return;
+                song = {
+                    title: search[0].title,
+                    url: search[0].url,
+                    duration: search[0].durationInSec,
+                    durationTime: parse(search[0].durationInSec),
+                    //seek: timeToSeek,
+                    //seekTime: parse(timeToSeek),
+                    source: 'yt'
+                }
+                // song = {
+                //     title: spot.name,
+                //     url: spot.url,
+                //     duration: spot.durationInSec,
+                //     durationTime: parse(spot.durationInSec),
+                //     source: 'sp'
+                // }
+                songs.push(song)
+            } else if (type === 'album' || type === 'playlist') {
+                const tracks = await spot.all_tracks();
+                await Promise.all(tracks.map(async (track) => { //fast but album is shuffled
+                    const search = await playDL.search(`${track.name}  ${track.artists[0].name}`, {
+                        limit: 1,
+                        source: searchSource
+                    })
+                    if (search.length == 0) return;
+                    song = {
+                        title: search[0].title,
+                        url: search[0].url,
+                        duration: search[0].durationInSec,
+                        durationTime: parse(search[0].durationInSec),
+                        //seek: timeToSeek,
+                        //seekTime: parse(timeToSeek),
+                        source: 'yt'
+                    }
+                    songs.push(song);
+                }));
+                // for (const track of tracks) {   //slow but album retains order
+                //     const search = await playDL.search(`${track.name}  ${track.artists[0].name}`, {
+                //         limit: 1,
+                //         source: searchSource
+                //     })
+                //     if (search.length == 0) return;
+                //     song = {
+                //         title: search[0].title,
+                //         url: search[0].url,
+                //         duration: search[0].durationInSec,
+                //         durationTime: parse(search[0].durationInSec),
+                //         //seek: timeToSeek,
+                //         //seekTime: parse(timeToSeek),
+                //         source: 'yt'
+                //     }
+                //     // song = {
+                //     //     title: track.name,
+                //     //     url: track.url,
+                //     //     duration: track.durationInSec,
+                //     //     durationTime: parse(track.durationInSec),
+                //     //     source: 'sp'
+                //     // }
+                //     songs.push(song)
+                // }
+                message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`)
+            }
         }
     }
 
@@ -313,6 +371,7 @@ async function execute(message, serverQueue) {
             connection: null,
             songs: songs,
             player: null,
+            resource: null,
             loop: false,
             //loopall: false,
             //seek: timeToSeek,
@@ -459,13 +518,14 @@ async function play(message, guild, song){
     }
   
   
-    let resource = createAudioResource(stream.stream, {
-        inputType: stream.type
+    serverQueue.resource = createAudioResource(stream.stream, {
+        inputType: stream.type,
+        inlineVolume: true
     });
  
     serverQueue.connection.subscribe(serverQueue.player);
 
-    serverQueue.player.play(resource);
+    serverQueue.player.play(serverQueue.resource);
 
     //event handlers for the music player
     var errorListener = error => {
@@ -882,5 +942,17 @@ function skipto(message,serverQueue){
         return 0;
     }
 }
+
+function volume(message, serverQueue){
+    let [min, max] = [1,200];
+    const args = message.content.split(" ");
+    let vol = parseInt(args[1])
+    if(vol < min || vol > max) {
+        return message.channel.send(`❌ Volume must be 1% to 200%.`)
+    }
+    serverQueue.resource.volume.setVolume(vol/100);
+    return message.channel.send(`🔊 Volume has been set to \`${vol}%\` for \*\*${serverQueue.songs[0].title}\*\*`);
+}
+
 client.login(token);
 
