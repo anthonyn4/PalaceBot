@@ -10,7 +10,8 @@
 
 //connection to discord
 const Discord = require('discord.js');
-const {Client, GatewayIntentBits, Partials} = require('discord.js');
+const { addSpeechEvent } = require("discord-speech-recognition");
+const {Client, GatewayIntentBits, Partials, Message} = require('discord.js');
 const {
     prefix,
     token,
@@ -26,6 +27,7 @@ const client = new Client({
     ],
     partials: [Partials.Channel],
 }); 
+addSpeechEvent(client);
 
 const playDL = require('play-dl');
 
@@ -85,12 +87,30 @@ client.on('messageCreate', async message =>{
         return; //don't respond to self-messages
     }
     if (!message.content.startsWith(prefix)) return;
-    
+        
+   
+    command(message);
+});
+
+client.on("speech", async voice => {
+    if (!voice.content) return; //if no speech detected, do nothing
+    //console.log(`${voice.author.username} said ${voice.content}`);
+    if (voice.content.toLowerCase().includes('music')){
+        //console.log(voice);
+        voice.content = `!${voice.content.toLowerCase().split('music')[1].trim()}`; //append '!' so everything else works
+        console.log(`${voice.author.username} said '${voice.content}'`)
+        command(voice);
+    }
+})
+
+function command(message){
     const serverQueue = queue.get(message.guild.id);
-    
+
     const args = message.content.slice(prefix.length).split(' ');
+    //console.log(args);
     const command = args.shift().toLowerCase();
-    switch(command){
+
+    switch(command.toLowerCase()){
         case 'p':
         case 'play' :
             execute(message, serverQueue);
@@ -143,12 +163,11 @@ client.on('messageCreate', async message =>{
             help(message);
             break;
     }
-    
-});
-
+}
 
 async function execute(message, serverQueue) {
     const args = message.content.split(" ");
+    //console.log(args);
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel){
         return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
@@ -276,9 +295,9 @@ async function execute(message, serverQueue) {
         } else if (source === 'sp'){
             //return message.channel.send("Spotify is currently not supported. Refer to https://play-dl.github.io/modules.html#stream for more information.")
             const spot = await playDL.spotify(args[1])
-            console.log(type);
+            //console.log(type);
             if (type === 'track') {
-                console.log(spot.artists[0].name);
+                //console.log(spot.artists[0].name);
                 const search = await playDL.search(`${spot.name} ${spot.artists[0].name}`, {
                     limit: 1,
                     source: searchSource
@@ -303,6 +322,7 @@ async function execute(message, serverQueue) {
                 songs.push(song)
             } else if (type === 'album' || type === 'playlist') {
                 const tracks = await spot.all_tracks();
+                const loadingMsg = await message.channel.send(`📇 Loading...`);
                 await Promise.all(tracks.map(async (track) => { //fast but album is shuffled
                     const search = await playDL.search(`${track.name}  ${track.artists[0].name}`, {
                         limit: 1,
@@ -344,6 +364,7 @@ async function execute(message, serverQueue) {
                 //     // }
                 //     songs.push(song)
                 // }
+                loadingMsg.delete();
                 message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`)
             }
         }
@@ -390,6 +411,7 @@ async function execute(message, serverQueue) {
                 channelId: voiceChannel.id,
                 guildId: message.guild.id,
                 adapterCreator: message.guild.voiceAdapterCreator,
+                selfDeaf: false
             })
             queueConstructor.connection = connection;
             queueConstructor.player = createAudioPlayer(
@@ -428,16 +450,27 @@ async function execute(message, serverQueue) {
             //     oldNetworking?.off('stateChange', networkStateChangeHandler);
             //     newNetworking?.on('stateChange', networkStateChangeHandler);
             //   });
-
-            const userCheck = setInterval( () => {
-                //console.log(voiceChannel.members.size);
-                if (voiceChannel.members.size == 1 && getVoiceConnection(message.guild.id) != undefined) {
-                    clearInterval(userCheck);
-                    destroy(message.guild);
-                    console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
-                } 
-            }, 60 * 1000); 
-
+            if (getVoiceConnection(message.guild.id) != undefined) {
+                const userCheck = setInterval(() => {
+                    //console.log(getVoiceConnection(message.guild.id));
+                    //console.log(voiceChannel);
+                    const membersInChannel = client.channels.fetch(getVoiceConnection(message.guild.id).packets.state.channel_id); //get the current channel of the bot
+                    //console.log(membersInChannel);
+                    membersInChannel.then((ch) => { 
+                        if (ch.members.size == 1) {
+                            clearInterval(userCheck);
+                            destroy(message.guild);
+                            console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
+                        } 
+                    })
+                   
+                }, 10 * 1000);
+            } else {
+                clearInterval(userCheck);
+            }
+           
+        
+        
             play(message, message.guild, queueConstructor.songs[0]);
         } catch (err) {
             console.log(err);
@@ -459,7 +492,7 @@ async function execute(message, serverQueue) {
             } else {
                 // if (song.seek > 0){ 
                 //     console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue starting at ${song.seekTime.minutes}:${song.seekTime.seconds}`);
-                //     return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue seeking to \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
+                //     return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
                 // } 
                 console.log(`Added ${songs[0].title} to the queue. {${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}}`);
                 return message.channel.send(`\*\*${songs[0].title}\*\* \`${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}\` has been added to the queue. `);
@@ -476,9 +509,7 @@ function destroy(guild){
 
 async function play(message, guild, song){
     const serverQueue = queue.get(guild.id);
-    // if (guild.id in queue){
-    //     queue.delete(guild.id);
-    // }
+
      if (!song) {
     //     serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
     //         //clearInterval(userCheck);
@@ -655,7 +686,8 @@ function loopSong(message, serverQueue){
 
 function showQueue(message,serverQueue){
     const args = message.content.split(" ");
-    let pos = 999;
+    let pos = 15; //show at most 15 songs
+
 
     if(!message.member.voice.channel){
         return message.channel.send("You have to be in a voice channel to view the queue.");
@@ -672,28 +704,14 @@ function showQueue(message,serverQueue){
             pos = args[1];
         }
     }
-    let nowPlaying = serverQueue.songs[0];
-    let msg = `Now playing: ${nowPlaying.title}\n----------------------------\n`;
-    let msg1 = ``; 
+    let msg = `Now playing: ${serverQueue.songs[0].title}\n----------------------------\n`;
     let length = Math.min(serverQueue.songs.length, ++pos); //queue includes current playing song, so we want to show current playing + the number of songs to be shown
     //let duration = nowPlaying.duration;
     for (var i = 1; i < length; i++){
-        if (serverQueue.songs[i].seek > 0){
-            text = `${i}. ${serverQueue.songs[i].title} starting at ${serverQueue.songs[i].seekTime.minutes}:${serverQueue.songs[i].seekTime.seconds}\n`
-            //duration = nowPlaying.duration - nowPlaying.seek;
-        } else {
-            text = `${i}. ${serverQueue.songs[i].title}\n`;
-        }
-
-        //text can fit in msg even if out of order (Fix) also need to extend this or add pages consider array of messages
-        if (text.length + msg.length < 2000) {
-            msg += text;
-        } else {
-            msg1 += text;
-        }
+        text = `${i}. ${serverQueue.songs[i].title}\n`;
+        msg += text;
     }
     message.channel.send('```' + msg + '```').then(msg => setTimeout(() => msg.delete(), 60*1000));
-    if (msg1 != ``) { message.channel.send('```' + msg1 + '```').then(msg => setTimeout(() => msg.delete(), 60*1000));}
 
 }
 
@@ -769,6 +787,7 @@ function help(message){
     !queue n -- shows (up to n) songs in the queue 
     !clear -- removes all songs in the queue  
     
+    !vol -- change the volume from 1-200%
     !shuffle -- shuffles the queue
     !loop -- repeats the queue 
     !seek mm:ss -- seek to a desired time in the current playing song\n
