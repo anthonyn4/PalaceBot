@@ -82,17 +82,17 @@ playDL.getFreeClientID().then((clientID) => playDL.setToken({
     }
 }))
 
-client.on('messageCreate', async message =>{
+client.on('messageCreate', function messageHandler(message) {
     if (message.author.bot) {
         return; //don't respond to self-messages
     }
     if (!message.content.startsWith(prefix)) return;
-        
-   
+    
     command(message);
+    this.removeListener('messageCreate', messageHandler);
 });
 
-client.on("speech", async voice => {
+client.on("speech", function voiceHandler(voice) {
     if (!voice.content) return; //if no speech detected, do nothing
     //console.log(`${voice.author.username} said ${voice.content}`);
     if (voice.content.toLowerCase().includes('music')){
@@ -101,6 +101,7 @@ client.on("speech", async voice => {
         console.log(`${voice.author.username} said '${voice.content}'`)
         command(voice);
     }
+    this.removeListener('speech', voiceHandler);
 })
 
 function command(message){
@@ -110,7 +111,11 @@ function command(message){
     //console.log(args);
     const command = args.shift().toLowerCase();
 
-    switch(command.toLowerCase()){
+    switch(command){
+        case 'join':
+        case 'connect':
+            connect(message,serverQueue);
+            break;
         case 'p':
         case 'play' :
             execute(message, serverQueue);
@@ -167,7 +172,6 @@ function command(message){
 
 async function execute(message, serverQueue) {
     const args = message.content.split(" ");
-    //console.log(args);
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel){
         return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
@@ -197,6 +201,8 @@ async function execute(message, serverQueue) {
         return message.channel.send("❌ Failed to validate URL or search.");
     } else if (check === 'search') {
         let query = message.content.substring(message.content.indexOf(' '), message.content.length).trim();
+        options = query.match(/-[^\s]+/g);
+        //console.log(options);
         if (args[1].trim() == '-sc' || args[1].trim() == '-soundcloud') { //check if the second string in the query is a specifier  (change to parse all dash prefixes as arguments)
             searchSource = {soundcloud : 'tracks'};
             query = message.content.substring(message.content.indexOf(' ', message.content.indexOf(' ')+1), message.content.length).trim();
@@ -380,7 +386,39 @@ async function execute(message, serverQueue) {
     //         return message.channel.send(`❌ Seeking beyond limits. <0-${maxTime.minutes}:${maxTime.seconds}>`);
     //     }
     // }
+    //console.log(serverQueue);
+    if(connect(message,serverQueue,songs)){
+        play(message, message.guild, songs[0]);
+    } else {
+        if (serverQueue.songs.length == 0) {   //if queue was empty, begin playing the first song 
+            serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue, needs to be done after the length is checked 
+            play(message, message.guild, serverQueue.songs[0]);
+        } else {
+            serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue
+   
+            if (songs.length > 1) {
+                //don't display anything
+            } else {
+                // if (song.seek > 0){ 
+                //     console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue starting at ${song.seekTime.minutes}:${song.seekTime.seconds}`);
+                //     return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
+                // } 
+                console.log(`Added ${songs[0].title} to the queue. {${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}}`);
+                return message.channel.send(`\*\*${songs[0].title}\*\* \`${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}\` has been added to the queue. `);
+            }
+        }
+    }
+    //setTimeout(() => {message.delete(), 30*1000}); //delete user message after 30 seconds
+}
 
+
+function connect(message, serverQueue, songs = []) {
+    //console.log('connecting')
+    const voiceChannel = message.member.voice.channel;
+    if (!voiceChannel){
+        return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
+       //return message.channel.send("You need to be in a channel to play music.");
+    }
     /*if no server queue exists, create one with the following parameters, 
      assign the current guild id to the serverqueue, 
      and push the requested song onto the array.
@@ -397,7 +435,7 @@ async function execute(message, serverQueue) {
             //loopall: false,
             //seek: timeToSeek,
             keep: false, //whether or not the current song should be kept in the queue, used for skipping songs while looping
-            timeoutID: undefined    //separate timeout ID for each guild
+            //timeoutID: undefined    //separate timeout ID for each guild
             //volume: 5,
             //playing: true
         };
@@ -468,39 +506,19 @@ async function execute(message, serverQueue) {
             } else {
                 clearInterval(userCheck);
             }
-           
-        
-        
-            play(message, message.guild, queueConstructor.songs[0]);
+            console.log(`Connected to ${message.guild.name}`);
         } catch (err) {
             console.log(err);
             queue.delete(message.guild.id); //on error, trash the serverqueue
-            return message.channel.send(err);
+            message.channel.send(err);
         }
-
- 
-
+        //console.log('queue created')
+        return 1;
     } else {
-        if (serverQueue.songs.length == 0) {   //if queue was empty, begin playing the first song 
-            serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue, needs to be done after the length is checked 
-            play(message, message.guild, serverQueue.songs[0]);
-        } else {
-            serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue
-   
-            if (songs.length > 1) {
-                //don't display anything
-            } else {
-                // if (song.seek > 0){ 
-                //     console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue starting at ${song.seekTime.minutes}:${song.seekTime.seconds}`);
-                //     return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
-                // } 
-                console.log(`Added ${songs[0].title} to the queue. {${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}}`);
-                return message.channel.send(`\*\*${songs[0].title}\*\* \`${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}\` has been added to the queue. `);
-            }
-        }
+        //console.log('queue exists');
+        return 0;
     }
-    //setTimeout(() => {message.delete(), 30*1000}); //delete user message after 30 seconds
-}
+} 
 
 function destroy(guild){
     getVoiceConnection(guild.id).destroy();
