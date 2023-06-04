@@ -1,0 +1,5 @@
+{
+    "prefix": "!", //Can replace with your preferred prefix
+    "token": //YOUR BOT TOKEN HERE,
+    "clientId": //YOUR BOT ID HERE
+}
