@@ -10,11 +10,12 @@
 
 //connection to discord
 const Discord = require('discord.js');
-const { addSpeechEvent } = require("discord-speech-recognition");
-const {Client, GatewayIntentBits, Partials, Message} = require('discord.js');
+const { addSpeechEvent, SpeechEvents } = require("discord-speech-recognition");
+const {Client, GatewayIntentBits, Partials, Events, verifyString} = require('discord.js');
 const {
     prefix,
     token,
+    geniusApiKey,
 } = require('./config.json');
 
 //instance of the bot
@@ -27,10 +28,10 @@ const client = new Client({
     ],
     partials: [Partials.Channel],
 }); 
-addSpeechEvent(client);
+//addSpeechEvent(client);
 
 const playDL = require('play-dl');
-
+const { getLyrics } = require('genius-lyrics-api');
 const {VoiceConnectionStatus, entersState, getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
 
 const queue = new Map(); //map of guild ID and its respective queue
@@ -46,63 +47,37 @@ client.once('reconnect', () =>{
 // });
 
 
-// client.on('voiceStateUpdate', (oldState, newState) => {
-//     if (newState.channel && !oldState.channel) {
-//     //   console.log(
-//     //     `${newState.member.displayName} has joined the voice channel "${newState.channel.name}"`
-//     //   );
-//     }
-//     if (!newState.channel && oldState.channel) {
-//     //   console.log(
-//     //     `${oldState.member.displayName} has left the voice channel "${oldState.channel.name}"`
-//     //   );
-        
-//     }  
-//     // if (newState.channel && oldState.channel) {
-//     //   if (newState.channel.id !== oldState.channel.id) {
-//     //     console.log(
-//     //       `${newState.member.displayName} has left the voice channel "${oldState.channel.name}" and joined "${newState.channel.name}"`
-//     //     );
-//     //   } else {
-//     //     console.log(
-//     //       `${newState.member.displayName} is still in the voice channel "${oldState.channel.name}" but there were some changes (e.g. muted/unmuted themselves, started sharing their screen, etc.)`
-//     //     );
-//     //   }
-//     // }
-//   });
-
-/*
-client.once('error', error => {
-    console.error(`Error: ${error.message} with resource ${error.resource.title}`);
-})
-*/
 playDL.getFreeClientID().then((clientID) => playDL.setToken({
     soundcloud : {
         client_id : clientID
     }
 }))
 
-client.on('messageCreate', function messageHandler(message) {
-    if (message.author.bot) {
+const messageHandler = (message) => {
+    if (message.author.bot || !message.content.startsWith(prefix)) {
         return; //don't respond to self-messages
     }
-    if (!message.content.startsWith(prefix)) return;
-    
     command(message);
-    this.removeListener('messageCreate', messageHandler);
-});
+    //client.removeListener('messageCreate', messageHandler);
+}
+client.on(Events.MessageCreate, messageHandler);
 
-client.on("speech", function voiceHandler(voice) {
-    if (!voice.content) return; //if no speech detected, do nothing
-    //console.log(`${voice.author.username} said ${voice.content}`);
-    if (voice.content.toLowerCase().includes('music')){
-        //console.log(voice);
-        voice.content = `!${voice.content.toLowerCase().split('music')[1].trim()}`; //append '!' so everything else works
-        console.log(`${voice.author.username} said '${voice.content}'`)
-        command(voice);
-    }
-    this.removeListener('speech', voiceHandler);
-})
+// const voiceHandler = (voice) => {
+//     if (!voice.content) {
+//         return; //if no speech detected, do nothing
+//     }   
+//     //console.log(`${voice.author.username} said ${voice.content}`);
+//     if (voice.content.toLowerCase().includes('music')){
+//         //console.log(voice);
+//         voice.content = `!${voice.content.toLowerCase().split('music')[1].trim()}`; //append '!' so everything else works
+//         console.log(`${voice.author.username} said '${voice.content}'`)
+//         command(voice);
+//     }
+//     //client.removeListener('speech', voiceHandler);
+// }
+// client.on(SpeechEvents.speech, voiceHandler);
+
+process.on('warning', e => console.warn(e.stack));
 
 function command(message){
     const serverQueue = queue.get(message.guild.id);
@@ -156,6 +131,9 @@ function command(message){
         case 'seek':
             seek(message,serverQueue);
             break;
+        case 'lyrics':
+            lyrics(message,serverQueue);
+            break;
         case 'stop':    
         case 'kick':
         case 'leave':
@@ -168,6 +146,9 @@ function command(message){
             help(message);
             break;
     }
+    //console.log(`voice events: ${client.listenerCount('speech', voiceHandler)}`);
+    //console.log(`message events: ${client.listenerCount('messageCreate', messageHandler)}`);
+
 }
 
 async function execute(message, serverQueue) {
@@ -177,17 +158,11 @@ async function execute(message, serverQueue) {
         return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
        //return message.channel.send("You need to be in a channel to play music.");
     }
-    // const permissions = voiceChannel.permissionsFor(message.client.user);
-    // if (!permissions.has('CONNECT') || !permissions.has('SPEAK')) {
-    //     return message.channel.send("imagine not having permissions 😭 ");
-    //     //return message.channel.send("You don't have permission to do that.")
-    // };
-
+   
     if (args.length == 1) {//someone invokes play command without any arguments
         return message.channel.send("Specify a search or URL to play 🤓")
     } 
  
-
     
     //check the last argument to see if it is a valid time to seek to
     //let timeToSeek = parse(args[args.length-1]);
@@ -224,6 +199,7 @@ async function execute(message, serverQueue) {
         } else {
             song = {
                 title: search[0].title,
+                //artist: search[0].music?.artist,
                 url: search[0].url,
                 duration: search[0].durationInSec,
                 durationTime: parse(search[0].durationInSec),
@@ -246,13 +222,15 @@ async function execute(message, serverQueue) {
                 const video = await playDL.video_info(args[1]);
                 song = {
                     title: video.video_details.title,
+                    //artist: video.video_details.music?.artist || video.video_details.music?.artist.text,
                     url: video.video_details.url,
                     duration: video.video_details.durationInSec,
                     durationTime: parse(video.video_details.durationInSec),
-                    //seek: timeToSeek,
+                    //seek: timeToSeek, //unused features
                     //seekTime: parse(timeToSeek),
                     source: 'yt'
                 }
+                console.log(video.video_details.music);
                 songs.push(song)
             } else if (type === 'playlist') {
                 const playlist = await playDL.playlist_info(args[1], {incomplete: true}) //parse youtube playlist ignoring hidden videos
@@ -261,6 +239,7 @@ async function execute(message, serverQueue) {
                 videos.forEach(function (video) {
                     song = {
                         title: video.title,
+                        //artist: video.music?.artist || video.music?.artist.text,
                         url: video.url,
                         duration: video.durationInSec,
                         durationTime: parse(video.durationInSec),
@@ -344,6 +323,7 @@ async function execute(message, serverQueue) {
                         //seekTime: parse(timeToSeek),
                         source: 'yt'
                     }
+                    console.log(`Fetched ${songs.length} videos from "${tracks.name}"`)
                     songs.push(song);
                 }));
                 // for (const track of tracks) {   //slow but album retains order
@@ -436,7 +416,7 @@ function connect(message, serverQueue, songs = []) {
             //seek: timeToSeek,
             keep: false, //whether or not the current song should be kept in the queue, used for skipping songs while looping
             //timeoutID: undefined    //separate timeout ID for each guild
-            //volume: 5,
+            volume: 100, //default 100% volume
             //playing: true
         };
 
@@ -492,7 +472,7 @@ function connect(message, serverQueue, songs = []) {
                 const userCheck = setInterval(() => {
                     //console.log(getVoiceConnection(message.guild.id));
                     //console.log(voiceChannel);
-                    const membersInChannel = client.channels.fetch(getVoiceConnection(message.guild.id).packets.state.channel_id); //get the current channel of the bot
+                    const membersInChannel = client.channels.fetch(getVoiceConnection(message.guild.id).packets?.state.channel_id); //get the current channel of the bot
                     //console.log(membersInChannel);
                     membersInChannel.then((ch) => { 
                         if (ch.members.size == 1) {
@@ -558,20 +538,27 @@ async function play(message, guild, song){
     let stream;
     //console.log(song.source);
    
-    if (song.source === 'yt' && song.seek > 0){  //only yt songs can be seeked, but there are songs from various sources in the playlist
-        console.log(`Seeked ${song.seek} seconds into the song.`);
-        stream = await playDL.stream(song.url, {seek: song.seek});
-    } else {
-        //console.trace();
-        stream = await playDL.stream(song.url);  
+    try {
+        if (song.source === 'yt' && song.seek > 0){  //only yt songs can be seeked, but there are songs from various sources in the playlist
+            console.log(`Seeked ${song.seek} seconds into the song.`);
+            stream = await playDL.stream(song.url, {seek: song.seek});
+        } else {
+            //console.trace();
+            stream = await playDL.stream(song.url);  
+        }
+    } catch (e) {
+        console.error(e);
+        skip();
     }
+    
   
   
     serverQueue.resource = createAudioResource(stream.stream, {
         inputType: stream.type,
         inlineVolume: true
     });
- 
+    serverQueue.resource.volume.setVolume(serverQueue.volume/100);
+
     serverQueue.connection.subscribe(serverQueue.player);
 
     serverQueue.player.play(serverQueue.resource);
@@ -704,7 +691,7 @@ function loopSong(message, serverQueue){
 
 function showQueue(message,serverQueue){
     const args = message.content.split(" ");
-    let pos = 15; //show at most 15 songs
+    let pos = 999; 
 
 
     if(!message.member.voice.channel){
@@ -729,7 +716,10 @@ function showQueue(message,serverQueue){
         text = `${i}. ${serverQueue.songs[i].title}\n`;
         msg += text;
     }
-    message.channel.send('```' + msg + '```').then(msg => setTimeout(() => msg.delete(), 60*1000));
+    let strings = splitText2(msg);
+    for (string of strings) {
+        message.channel.send('```' + string + '```').then(string => setTimeout(() => string.delete(), 60*1000));
+    }
 
 }
 
@@ -950,7 +940,92 @@ function skipto(message,serverQueue){
     serverQueue.player.stop();                  //skip current playing song 
 }
 
+function lyrics(message, serverQueue){
+    if(!message.member.voice.channel){
+        return message.channel.send("❌ You have to be in a voice channel to skip.");
+    }
+    if (!serverQueue || serverQueue.songs.length == 0) {
+        return message.channel.send("❌ No song to get lyrics for.");
+    }
+    const {title, duration} = serverQueue.songs[0];
+    const options = {
+        apiKey: geniusApiKey,
+        title: title,
+        artist: ' ',
+        optimizeQuery: true
+    };
+    getLyrics(options)
+            .then((lyrics) => { 
+                if (!lyrics) { 
+                    return message.channel.send(`❌ No lyrics found for \*\*${title}\*\*`)
+                }
+                console.log(`Found lyrics for ${serverQueue.songs[0].title}`);
+                let strings = splitText2(lyrics);
+                for (string of strings) {
+                    message.channel.send(string).then(string => setTimeout(() => string.delete(), duration*1000));
+                }
+                //return message.channel.send(lyrics)
+            })
+            .catch((e) => console.error(e));
+}
 
+function volume(message, serverQueue){
+    let [min, max] = [0,200];
+    const args = message.content.split(" ");
+    let vol = parseInt(args[1])
+    if(vol < min || vol > max) {
+        return message.channel.send(`❌ Volume must be 0% to 200%.`)
+    }
+    serverQueue.volume = vol;
+    serverQueue.resource.volume.setVolume(vol/100);
+    return message.channel.send(`🔊 Volume has been set to \`${vol}%\` for \*\*${serverQueue.songs[0].title}\*\*`);
+}
+
+//add splitting at specified character
+function splitText(text) {
+    const maxLength = 1999;
+    const numberOfStrings = text.length / maxLength;
+    if (text.length < maxLength) {
+        return [text];
+    }
+
+    let strings = [];
+    for (let i = 0; i<numberOfStrings;i++){
+        strings.push(text.substring(maxLength*i, maxLength*(i+1)));
+    }
+    // console.log(strings);
+    return strings;
+}
+
+//Discord's now deprecated splitMessage function (default maxLength is 2000)
+function splitText2(text, { maxLength = 1990, char = '\n', prepend = '', append = '' } = {}) {
+    text = verifyString(text);
+    if (text.length <= maxLength) return [text];
+    let splitText = [text];
+    if (Array.isArray(char)) {
+      while (char.length > 0 && splitText.some(elem => elem.length > maxLength)) {
+        const currentChar = char.shift();
+        if (currentChar instanceof RegExp) {
+          splitText = splitText.flatMap(chunk => chunk.match(currentChar));
+        } else {
+          splitText = splitText.flatMap(chunk => chunk.split(currentChar));
+        }
+      }
+    } else {
+      splitText = text.split(char);
+    }
+    if (splitText.some(elem => elem.length > maxLength)) throw new RangeError('SPLIT_MAX_LEN');
+    const messages = [];
+    let msg = '';
+    for (const chunk of splitText) {
+      if (msg && (msg + char + chunk + append).length > maxLength) {
+        messages.push(msg + append);
+        msg = prepend;
+      }
+      msg += (msg && msg !== prepend ? char : '') + chunk;
+    }
+    return messages.concat(msg).filter(m => m);
+}
 
 /**
  * Given a number, parses it into the form of mm:ss
@@ -980,16 +1055,7 @@ function skipto(message,serverQueue){
     }
 }
 
-function volume(message, serverQueue){
-    let [min, max] = [1,200];
-    const args = message.content.split(" ");
-    let vol = parseInt(args[1])
-    if(vol < min || vol > max) {
-        return message.channel.send(`❌ Volume must be 1% to 200%.`)
-    }
-    serverQueue.resource.volume.setVolume(vol/100);
-    return message.channel.send(`🔊 Volume has been set to \`${vol}%\` for \*\*${serverQueue.songs[0].title}\*\*`);
-}
+
 
 client.login(token);
 
