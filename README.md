@@ -21,6 +21,8 @@ Works but suffers from a memory leak so it is disabled for the time being. You c
 | `!clear` | Removes all except the current song from the queue. |
 | `!shuffle` | Shuffles all the songs in the queue. |
 | `!seek mm:ss` | Seek to a desired position in the current song. |
+| `!ff mm:ss` | Fast forward a specified amount in the current song. |
+| `!lyrics` | Displays lyrics for the current song. |
 | `!stop` `!kick` `!leave` | Removes the bot from your voice channel. |
 <!-- | `!join/connect` | Summons the bot to your current voice channel. (using !play will automatically invoke this) | -->
 
