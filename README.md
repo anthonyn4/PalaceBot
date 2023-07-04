@@ -1,13 +1,14 @@
 # PALACE BAY
 PALACE BAY is a simple music bot compatible with YouTube and SoundCloud built on [discord.js](https://discord.js.org). This bot is generally self-hosted or ran on a dedicated server such as a Raspberry Pi. The bot runs on [Node.js](https://nodejs.org/en) and uses the [play-dl](https://play-dl.github.io/index.html) library to function.
 ## Features
-The music bot also responds to voice commands as well. Begin your voice command with 'music' followed by whichever command you want to invoke. Some commands may not be suited for voice commands, but you can try. 
+~~The music bot also responds to voice commands as well. Begin your voice command with 'music' followed by whichever command you want to invoke. Some commands may not be suited for voice commands, but you can try.~~ 
 <br>
-An example would be 'music play mood lil uzi' or 'music next'.
+~~An example would be 'music play mood lil uzi' or 'music next'.~~ (Works but suffers from a memory leak so it is disabled for the time being. You can enable it at your own discretion by uncommenting the `voiceHandler` code block.)
 ### Commands
 - `!help` `!commands` = Lists all commands. 
 - `!join/connect` = Summons the bot to your current voice channel.
-- `!play [-sc] [-pl|-al] query`= Searches for the specified query on YouTube. You can specify optional arguments to search for a playlist `-pl` or album `-al` (SoundCloud only) or change your search to SoundCloud `-sc`.
+- `!play [-sc] [-pl|-al] query`= Searches for the specified query on YouTube. 
+  > <sub>You can specify optional arguments to search for a playlist `-pl` or album `-al` (SoundCloud only) or change your search to SoundCloud `-sc`.</sub>
 - `!play url` = Plays the requested url in your current voice channel. (Supports playlists and radio as well)
 - `!skip` `!remove` `!next` = Skip the current song.
 - `!skip` `!remove` `!next keyword|position` = Remove a song from the desired position or a song containing the keyword from the queue.
