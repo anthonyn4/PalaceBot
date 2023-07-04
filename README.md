@@ -7,7 +7,7 @@ An example would be 'music play mood lil uzi' or 'music next'.
 ### Commands
 - `!help` `!commands` = Lists all commands. 
 - `!join/connect` = Summons the bot to your current voice channel.
-- `!play [-sc] [-pl|-al] query`= Searches for the specified query on YouTube. You can specify optional arguments to search for a playlist (-pl) or album (-al SoundCloud only) or change your search to SoundCloud (-sc).
+- `!play [-sc] [-pl|-al] query`= Searches for the specified query on YouTube. You can specify optional arguments to search for a playlist `-pl` or album `-al` (SoundCloud only) or change your search to SoundCloud `-sc`.
 - `!play url` = Plays the requested url in your current voice channel. (Supports playlists and radio as well)
 - `!skip` `!remove` `!next` = Skip the current song.
 - `!skip` `!remove` `!next keyword|position` = Remove a song from the desired position or a song containing the keyword from the queue.
