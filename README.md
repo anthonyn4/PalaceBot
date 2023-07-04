@@ -4,25 +4,25 @@ PALACE BAY is a simple music bot compatible with YouTube and SoundCloud built on
 ~~The music bot also responds to voice commands as well. Begin your voice command with 'music' followed by whichever command you want to invoke. Some commands may not be suited for voice commands, but you can try.~~ 
 <br>
 ~~An example would be 'music play mood lil uzi' or 'music next'.~~ 
-<br>
+<br><br>
 Works but suffers from a memory leak so it is disabled for the time being. You can enable it at your own discretion by uncommenting https://github.com/anthonyn4/MusicBot/blob/0c1549d9e5b9c5d88d67301373319ca6f5c4c9b3/main.js#L65-L78
 ### Commands
 | Commands | Description |
 | --- | --- |
 | `!help` `!commands` | Lists all commands. |
-| `!join/connect` | Summons the bot to your current voice channel. |
-| `!play query`| Searches for the specified query on YouTube. |
+| `!play [-sc] [-pl/-al] query`| Searches for the specified query on YouTube. (You can search for playlists `-pl` or albums(SoundCloud only) `-al`  or search on SoundCloud `-sc`) |
 | `!play url` | Plays the requested url in your current voice channel. (Supports playlists and radio as well)
-| `!skip` `!remove` `!next` | Skip the current song. (or optionally, specify a keyword or position to remove a song from the queue) |
+| `!skip` `!remove` `!next [keyword/position]` | Skip the current song. (or optionally, specify a keyword or position to remove a song from the queue) |
 | `!skipto keyword/position` | Jump to a desired position or song containing the keyword in the queue. |
 | `!volume 0-200` | Set the volume of the bot from 0% to 200%.
 | `!pause` `!resume` | Pause or resume playing of the bot.|
 | `!loop` `!repeat` | Loops the queue. (type !loop or !repeat again to disable the loop) |
-| `!queue` | Shows the first 15 songs in the queue. |
+| `!queue [n]` | Shows all the songs in the queue. (or optionally, up to n songs) |
 | `!clear` | Removes all except the current song from the queue. |
 | `!shuffle` | Shuffles all the songs in the queue. |
 | `!seek mm:ss` | Seek to a desired position in the current song. |
 | `!stop` `!kick` `!leave` | Removes the bot from your voice channel. |
+<!-- | `!join/connect` | Summons the bot to your current voice channel. (using !play will automatically invoke this) | -->
 
 ## Installation
 - The bot currently runs on [discord.js v14](https://www.npmjs.com/package/discord.js) and [Node.js v18.12.1](https://nodejs.org/en) and depends on [play-dl](https://play-dl.github.io/index.html) to function.
@@ -31,3 +31,4 @@ Works but suffers from a memory leak so it is disabled for the time being. You c
 - If you want to view lyrics for your current song, the bot depends on [genius-lyrics-api](https://github.com/farshed/genius-lyrics-api). Make sure to install and get your [Genius API key](https://genius.com/developers).
 - In order to complete setting up your bot, follow this [guide](https://discordjs.guide/preparations/setting-up-a-bot-application.html#creating-your-bot) on how to fill out your config.json. 
 - Finally, to run your bot, install [Visual Studio Code](https://code.visualstudio.com/) and navigate to your bot's folder. You can run `node .` or `node main.js` in your terminal to activate the bot. The console should print out an initial message indicating the bot has come online.
+- 
