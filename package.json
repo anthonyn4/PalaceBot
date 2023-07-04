@@ -14,6 +14,7 @@
     "discord-speech-recognition": "^3.3.1",
     "discord.js": "^14.3.0",
     "ffmpeg-static": "^4.4.1",
+    "genius-lyrics-api": "^3.2.0",
     "libsodium-wrappers": "^0.7.10",
     "play-dl": "^1.9.6"
   }
