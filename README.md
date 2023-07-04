@@ -33,4 +33,4 @@ Works but suffers from a memory leak so it is disabled for the time being. You c
 - If you want to view lyrics for your current song, the bot depends on [genius-lyrics-api](https://github.com/farshed/genius-lyrics-api). Make sure to install and get your [Genius API key](https://genius.com/developers).
 - In order to complete setting up your bot, follow this [guide](https://discordjs.guide/preparations/setting-up-a-bot-application.html#creating-your-bot) on how to fill out your config.json. 
 - Finally, to run your bot, install [Visual Studio Code](https://code.visualstudio.com/) and navigate to your bot's folder. You can run `node .` or `node main.js` in your terminal to activate the bot. The console should print out an initial message indicating the bot has come online.
-- 
+  
