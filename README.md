@@ -3,7 +3,9 @@ PALACE BAY is a simple music bot compatible with YouTube and SoundCloud built on
 ## Features
 ~~The music bot also responds to voice commands as well. Begin your voice command with 'music' followed by whichever command you want to invoke. Some commands may not be suited for voice commands, but you can try.~~ 
 <br>
-~~An example would be 'music play mood lil uzi' or 'music next'.~~ (Works but suffers from a memory leak so it is disabled for the time being. You can enable it at your own discretion by uncommenting the `voiceHandler` code block.)
+~~An example would be 'music play mood lil uzi' or 'music next'.~~ 
+<br>
+Works but suffers from a memory leak so it is disabled for the time being. You can enable it at your own discretion by uncommenting https://github.com/anthonyn4/MusicBot/blob/0c1549d9e5b9c5d88d67301373319ca6f5c4c9b3/main.js#L65-L78
 ### Commands
 | Commands | Description |
 | --- | --- |
