@@ -11,7 +11,7 @@
 //connection to discord
 const Discord = require('discord.js');
 const { addSpeechEvent, SpeechEvents } = require("discord-speech-recognition");
-const {Client, GatewayIntentBits, Partials, Events, verifyString} = require('discord.js');
+const {Client, GatewayIntentBits, Partials, Events, verifyString, Message, Guild} = require('discord.js');
 const {
     prefix,
     token,
@@ -79,6 +79,10 @@ client.on(Events.MessageCreate, messageHandler);
 
 process.on('warning', e => console.warn(e.stack));
 
+/**
+ * Executes a command based on user input.
+ * @param {Message} message A Discord message object.
+ */
 function command(message){
     const serverQueue = queue.get(message.guild.id);
 
@@ -131,6 +135,10 @@ function command(message){
         case 'seek':
             seek(message,serverQueue);
             break;
+        case 'ff':
+        case 'forward':
+            forward(message,serverQueue);
+            break;
         case 'lyrics':
             lyrics(message,serverQueue);
             break;
@@ -151,6 +159,12 @@ function command(message){
 
 }
 
+/**
+ * Processes user input to either search for a song or process a URL.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ * @returns {Message} A message to the channel based on the user input.
+ */
 async function execute(message, serverQueue) {
     const args = message.content.split(" ");
     const voiceChannel = message.member.voice.channel;
@@ -160,7 +174,7 @@ async function execute(message, serverQueue) {
     }
    
     if (args.length == 1) {//someone invokes play command without any arguments
-        return message.channel.send("Specify a search or URL to play 🤓")
+        return message.channel.send("❌ Specify a search or URL to play 🤓")
     } 
  
     
@@ -175,18 +189,40 @@ async function execute(message, serverQueue) {
     if (check === false) {
         return message.channel.send("❌ Failed to validate URL or search.");
     } else if (check === 'search') {
-        let query = message.content.substring(message.content.indexOf(' '), message.content.length).trim();
-        options = query.match(/-[^\s]+/g);
-        //console.log(options);
-        if (args[1].trim() == '-sc' || args[1].trim() == '-soundcloud') { //check if the second string in the query is a specifier  (change to parse all dash prefixes as arguments)
-            searchSource = {soundcloud : 'tracks'};
-            query = message.content.substring(message.content.indexOf(' ', message.content.indexOf(' ')+1), message.content.length).trim();
-            console.log(`${message.author.username} searched for '${query}' on SoundCloud🔎`);
+        let searchMsg = '';
+        let query = message.content.substring(message.content.indexOf(' '), message.content.length)
+        let argsRegex = new RegExp(/\s-[^\s]+/, 'g');
+        let options = query.match(argsRegex) ?? [];
+        options = options.map(e => e.trim());
+        query = query.replace(argsRegex, "").trim();
+        if (options.includes('-sc') || options.includes('-soundcloud')) { 
+            if (options.includes('-pl') || options.includes('-playlist')) {
+                searchSource = {soundcloud: 'playlists'}
+                searchMsg = await message.channel.send(`Searching for a playlist named '${query}' on SoundCloud🔎`);
+                console.log(`${message.author.username} searched for playlist '${query}' on SoundCloud🔎`);
+            } else if (options.includes('-al') || options.includes('-album')) {
+                searchSource = {soundcloud: 'albums'}
+                searchMsg = await message.channel.send(`Searching for an album named '${query}' on SoundCloud🔎`);
+                console.log(`${message.author.username} searched for album '${query}' on SoundCloud🔎`)
+            } else {
+                searchSource = {soundcloud : 'tracks'};
+                searchMsg = await message.channel.send(`Searching for '${query}' on SoundCloud🔎`);
+                console.log(`${message.author.username} searched for '${query}' on SoundCloud🔎`)
+            }
+            //console.log(`${message.author.username} searched for '${query}' on SoundCloud🔎`);
         } else {
-            console.log(`${message.author.username} searched for '${query}' on YouTube🔎`);
+            if (options.includes('-pl') || options.includes('-playlist')) {
+                searchSource = {youtube: 'playlist'}
+                searchMsg = await message.channel.send(`Searching for a playlist named '${query}' on YouTube🔎`);
+                console.log(`${message.author.username} searched for playlist '${query}' on YouTube🔎`);
+            } else {
+                searchSource = {youtube: 'video'};
+                searchMsg = await message.channel.send(`Searching for '${query}' on YouTube🔎`);
+                console.log(`${message.author.username} searched for '${query}' on YouTube🔎`)
+            }
+            //console.log(`${message.author.username} searched for '${query}' on YouTube🔎`);
         }
         //let query = message.content.substring(message.content.indexOf(' '),timeToSeek ? message.content.lastIndexOf(' ') : message.content.length).trim(); //if timetoseek is non-zero, go to last space (omit seek time) otherwise accept whole message
-        const searchMsg = await message.channel.send(`Searching for '${query}' 🔎`);
         const search = await playDL.search(query, {
             limit: 1,
             source: searchSource
@@ -194,24 +230,31 @@ async function execute(message, serverQueue) {
         searchMsg.delete();
         //console.log(search)
         //console.log(searchSource);
+
         if (search.length == 0){    
-            return message.channel.send(`No results found for  '${query}'  😢`);
+            return message.channel.send(`❌ No results found for  '${query}'  😢`);
         } else {
-            song = {
-                title: search[0].title,
-                //artist: search[0].music?.artist,
-                url: search[0].url,
-                duration: search[0].durationInSec,
-                durationTime: parse(search[0].durationInSec),
-                //seek: timeToSeek,
-                //seekTime: parse(timeToSeek),
-                source: 'yt'
+            if (search[0].type == 'track' || search[0].type == 'video') {
+                song = {
+                    title: search[0].title,
+                    //artist: search[0].channel?.name || search[0].publisher?.artist,
+                    url: search[0].url,
+                    duration: search[0].durationInSec,
+                    durationTime: parse(search[0].durationInSec),
+                    seek: 0,
+                    //seekTime: parse(timeToSeek),
+                    source: 'yt'
+                }
+                songs.push(song);
+            } else if (search[0].type == 'playlist') {
+                message.content = args[0] + " " + search[0].url;
+                //console.log(message.content);
+                execute(message,serverQueue);
+            } else {
+                console.log(search[0]);
+                return console.error("Failed to find a valid search.");
             }
-            if ('soundcloud' in searchSource){
-                song.title = search[0].name;
-                song.source = 'so';
-            }
-            songs.push(song);
+      
         }
     } else {
         let source = check.split("_")[0]
@@ -222,15 +265,15 @@ async function execute(message, serverQueue) {
                 const video = await playDL.video_info(args[1]);
                 song = {
                     title: video.video_details.title,
-                    //artist: video.video_details.music?.artist || video.video_details.music?.artist.text,
+                    //artist: video.video_details.channel.name,
                     url: video.video_details.url,
                     duration: video.video_details.durationInSec,
                     durationTime: parse(video.video_details.durationInSec),
-                    //seek: timeToSeek, //unused features
+                    seek: 0, //unused features
                     //seekTime: parse(timeToSeek),
                     source: 'yt'
                 }
-                console.log(video.video_details.music);
+                //console.log(video.video_details.music);
                 songs.push(song)
             } else if (type === 'playlist') {
                 const playlist = await playDL.playlist_info(args[1], {incomplete: true}) //parse youtube playlist ignoring hidden videos
@@ -239,11 +282,11 @@ async function execute(message, serverQueue) {
                 videos.forEach(function (video) {
                     song = {
                         title: video.title,
-                        //artist: video.music?.artist || video.music?.artist.text,
+                        //artist: video.channel.name,
                         url: video.url,
                         duration: video.durationInSec,
                         durationTime: parse(video.durationInSec),
-                        //seek: timeToSeek,
+                        seek: 0,
                         //seekTime: parse(timeToSeek),
                         source: 'yt'
                     }
@@ -256,6 +299,7 @@ async function execute(message, serverQueue) {
             if (type === 'track') {
                 song = {
                     title: so.name,
+                    //artist: so.publisher?.artist,
                     url: so.url,
                     duration: so.durationInSec,
                     durationTime: parse(so.durationInSec),
@@ -268,6 +312,7 @@ async function execute(message, serverQueue) {
                 tracks.forEach(function (track) {
                     song = {
                         title: track.name,
+                        //artist: track.publisher?.artist,
                         url: track.url,
                         duration: track.durationInSec,
                         durationTime: parse(track.durationInSec),
@@ -290,6 +335,7 @@ async function execute(message, serverQueue) {
                 if (search.length == 0) return;
                 song = {
                     title: search[0].title,
+                    artist: spot.artists[0].name,
                     url: search[0].url,
                     duration: search[0].durationInSec,
                     durationTime: parse(search[0].durationInSec),
@@ -316,6 +362,7 @@ async function execute(message, serverQueue) {
                     if (search.length == 0) return;
                     song = {
                         title: search[0].title,
+                        artist: track.artists[0].name,
                         url: search[0].url,
                         duration: search[0].durationInSec,
                         durationTime: parse(search[0].durationInSec),
@@ -392,6 +439,13 @@ async function execute(message, serverQueue) {
 }
 
 
+/**
+ * Establishes a connection between a Discord voice channel and its associated queue.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ * @param {Array} songs Array of song objects
+ * @returns {number} 1 if successful, 0 if failed
+ */
 function connect(message, serverQueue, songs = []) {
     //console.log('connecting')
     const voiceChannel = message.member.voice.channel;
@@ -413,11 +467,9 @@ function connect(message, serverQueue, songs = []) {
             resource: null,
             loop: false,
             //loopall: false,
-            //seek: timeToSeek,
             keep: false, //whether or not the current song should be kept in the queue, used for skipping songs while looping
             //timeoutID: undefined    //separate timeout ID for each guild
             volume: 100, //default 100% volume
-            //playing: true
         };
 
         queue.set(message.guild.id, queueConstructor);
@@ -472,7 +524,7 @@ function connect(message, serverQueue, songs = []) {
                 const userCheck = setInterval(() => {
                     //console.log(getVoiceConnection(message.guild.id));
                     //console.log(voiceChannel);
-                    const membersInChannel = client.channels.fetch(getVoiceConnection(message.guild.id).packets?.state.channel_id); //get the current channel of the bot
+                    const membersInChannel = client.channels.fetch(getVoiceConnection(message.guild.id)?.packets.state.channel_id); //get the current channel of the bot
                     //console.log(membersInChannel);
                     membersInChannel.then((ch) => { 
                         if (ch.members.size == 1) {
@@ -499,16 +551,26 @@ function connect(message, serverQueue, songs = []) {
         return 0;
     }
 } 
-
+/**
+ * Destroys the queue and its voice connection.
+ * @param {Guild} guild A Discord guild object.
+ */
 function destroy(guild){
     getVoiceConnection(guild.id).destroy();
     queue.delete(guild.id);
 }
 
+/**
+ * 
+ * @param {Message} message A Discord message object.
+ * @param {Guild} guild A Discord guild object.
+ * @param {Object} song Contains information about a song.
+ * @returns {Message} A message to the channel on the state of the song (playing, searching)
+ */
 async function play(message, guild, song){
     const serverQueue = queue.get(guild.id);
 
-     if (!song) {
+     if (!song) { 
     //     serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
     //         //clearInterval(userCheck);
     //         if (getVoiceConnection(guild.id) != undefined) {
@@ -548,10 +610,9 @@ async function play(message, guild, song){
         }
     } catch (e) {
         console.error(e);
-        skip();
+        return; //stop executing function
     }
     
-  
   
     serverQueue.resource = createAudioResource(stream.stream, {
         inputType: stream.type,
@@ -600,7 +661,12 @@ async function play(message, guild, song){
     }
 }
 
-
+/**
+ * Clears all the songs in the queue.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ * @returns {Message} A message to the channel on whether or not the queue has been cleared.
+ */
 function clear(message, serverQueue){
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to clear the queue.");
@@ -620,7 +686,12 @@ function clear(message, serverQueue){
     return message.channel.send("🧹 Cleared queue. ");
 }
 
-
+/**
+ * Loops the queue.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ * @returns {Message} A message that indicates the state of the loop.
+ */
 function loopSong(message, serverQueue){
     const args = message.content.split(" ");
 
@@ -638,10 +709,10 @@ function loopSong(message, serverQueue){
         serverQueue.keep = !serverQueue.keep;    //and keep the current song 
         if (serverQueue.loop){
             console.log(`Looping the queue.`);
-            return message.channel.send('⚡Loop **ACTIVATED**🌩️');
+            return message.channel.send('⚡ Loop **ACTIVATED** 🌩️');
         } else {
             console.log('Disabled the loop.');
-            return message.channel.send('📴Loop **DEACTIVATED**😥');
+            return message.channel.send('📴 Loop **DEACTIVATED** 😥');
         }
         //return message.channel.send('Looping the queue.');
    // }
@@ -689,6 +760,12 @@ function loopSong(message, serverQueue){
    */
 }
 
+/**
+ * Shows the queue of songs.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ * @returns {Message} A message showing the queue of songs.
+ */
 function showQueue(message,serverQueue){
     const args = message.content.split(" ");
     let pos = 999; 
@@ -723,6 +800,12 @@ function showQueue(message,serverQueue){
 
 }
 
+/**
+ * Pauses the song.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ * @returns {Message} A message showing if the song has been paused or not.
+ */
 function pause(message, serverQueue){
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to pause the song.");
@@ -735,6 +818,11 @@ function pause(message, serverQueue){
     return message.channel.send("⏸️ Paused song. (type !resume to continue playing)")
 }
 
+/**
+ * Resumes the song.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ */
 function resume(message, serverQueue){
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to resume the song.");
@@ -744,7 +832,7 @@ function resume(message, serverQueue){
     }
     console.log(`Song resumed.`);
     serverQueue.player.unpause();
-    return message.channel.send("▶️ Resumed song.")
+    //return message.channel.send("▶️ Resumed song.")
 }
 
 function stop(message, serverQueue) {   //same thing as clear i guess
@@ -764,7 +852,7 @@ function stop(message, serverQueue) {   //same thing as clear i guess
 
 /**
  * Removes and cleans up the bot from the provided serverQueue
- * @param {String} message
+ * @param {String} message A Discord message object.
  * @param {Object} serverQueue
  */
 function kick(message, serverQueue){
@@ -780,8 +868,8 @@ function kick(message, serverQueue){
 }
 
 /**
- * Displays the list of commands
- * @param {String} message  
+ * Displays the list of commands.
+ * @param {String} message  A Discord message object.
  */
 function help(message){
     const commands = `
@@ -794,11 +882,15 @@ function help(message){
     !skipto number|query -- search for a song to jump to in the queue by number or query
     !queue n -- shows (up to n) songs in the queue 
     !clear -- removes all songs in the queue  
-    
-    !vol -- change the volume from 1-200%
+
     !shuffle -- shuffles the queue
     !loop -- repeats the queue 
-    !seek mm:ss -- seek to a desired time in the current playing song\n
+    !seek mm:ss -- seek to a desired time in the current playing song
+    !ff mm:ss -- fast forward an certain amount of time in the current playing song
+
+    !vol 0-200 -- change the volume from 0-200%
+    !lyrics -- shows the lyrics of the current playing song 
+    
     To view these commands again, type !help or !commands
     `
     message.channel.send('```' + commands + '```');//.then(msg => setTimeout(() => msg.delete(), 30*1000));
@@ -806,9 +898,9 @@ function help(message){
 
 
 /**
- * Shuffles the queue of songs in the provided serverQueue
- * @param {String} message  
- * @param {Object} serverQueue
+ * Shuffles the queue of songs.
+ * @param {Message} message  A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns 
  */
 function shuffle(message, serverQueue) {
@@ -827,8 +919,15 @@ function shuffle(message, serverQueue) {
     message.channel.send('🔀 Shuffled the queue.');
 }
 
-
-function seek(message,serverQueue) {
+/**
+ * Seek to a desired time in a song.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ * @param {number} [time=0] Number of seconds to seek into the song.
+ * @returns 
+ */
+function seek(message,serverQueue, time = 0) {
+    //console.log(`time: ${time}`)
     const args = message.content.split(" ");
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to seek.");
@@ -839,28 +938,75 @@ function seek(message,serverQueue) {
     if(serverQueue.songs[0].source != 'yt'){ 
         return message.channel.send("❌ Song must be from YouTube to seek.");
     }
-    let timeToSeek = parse(args[1]);
-    let seekTime = parse(timeToSeek);
-    //console.log(timeToSeek);
-    //console.log(seekTime);
-    let maxDuration = serverQueue.songs[0].duration;
-    let maxTime = parse(maxDuration);
-    if (timeToSeek > maxDuration || timeToSeek < 0){ 
-        //console.log(maxDuration)
-        console.log(`Seek failed, requested ${timeToSeek}, max is ${maxDuration}`);
-        return message.channel.send(`❌ Invalid timestamp. <0-${maxTime.minutes}:${maxTime.seconds}>`);
-    } 
+  
+    //console.log(serverQueue.resource.playbackDuration);
+    let timeToSeek = 0;
+    let seekTime = 0;
+    if (time == 0) { //if no timestamp is given then process the user's timestamp
+        timeToSeek = parse(args[1]) || parse(time);
+        seekTime = parse(timeToSeek);
+        //console.log(timeToSeek);
+        //console.log(seekTime);
+        let maxDuration = serverQueue.songs[0].duration;
+        let maxTime = parse(maxDuration);
+        if (args[1].indexOf(':') == -1) {
+            return message.channel.send(`❌ Enter a timestamp between <0-${maxTime.minutes}:${maxTime.seconds}>`);
+        }
+        if (timeToSeek > maxDuration || timeToSeek < 0){ 
+            //console.log(maxDuration)
+            console.error(`Seek failed, requested ${timeToSeek}, max is ${maxDuration}`);
+            return message.channel.send(`❌ Enter a timestamp between <0-${maxTime.minutes}:${maxTime.seconds}>`);
+        } 
+    }
     //else if (timeToSeek == 0) {
     //     return message.channel.send(`❌ Specify a timestamp. <0-${maxTime.minutes}:${maxTime.seconds}>`);
     // }
     let currentSong = serverQueue.songs[0];
-    currentSong.seek = timeToSeek;
-    currentSong.seekTime = seekTime;
+    currentSong.seek = timeToSeek || time; //used to seek in the song
+    console.log(`seek: ${currentSong.seek}`);
+
+    currentSong.seekTime = seekTime || parse(time); //used to display the time in mm:ss
+    console.log(currentSong.seekTime);
+
     serverQueue.songs.unshift(currentSong);
     serverQueue.player.stop();
 }
 
-//used to remove a song
+/**
+ * Fast forward a set amount of time in a song.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ * @returns 
+ */
+function forward(message,serverQueue){
+    const args = message.content.split(" ");
+    if(!message.member.voice.channel){
+        return message.channel.send("❌ You have to be in a voice channel to seek.");
+    }
+    if (!serverQueue || serverQueue.songs.length == 0) {
+        return message.channel.send("❌ No song to forward.");
+    }
+    if(serverQueue.songs[0].source != 'yt'){ 
+        return message.channel.send("❌ Song must be from YouTube to forward.");
+    }
+    let song = serverQueue.songs[0];
+    let amountToForward = parse(args[1]); //convert mm:ss format to seconds
+    let currentTime = Math.floor((serverQueue.resource.playbackDuration + (song.seek*1000))/1000);
+    let newTime = currentTime + amountToForward; 
+    if (newTime > song.duration) {
+        serverQueue.player.stop(); //just skip the song if they forward too far
+    } else {
+        console.log(`Forwarded ${args[1]} in ${song.title}`);
+        seek(message, serverQueue, newTime);
+    }
+}
+
+/**
+ * Skip a song in the queue.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ * @returns 
+ */
 function skip(message, serverQueue){
     const args = message.content.split(" ");
 
@@ -871,13 +1017,15 @@ function skip(message, serverQueue){
         return message.channel.send("❌ No songs to skip.");
     }
     if (args.length == 1){
+        serverQueue.keep = false; //don't keep skipped song in the queue
         serverQueue.player.stop();     //AudioPlayer stop method to skip to next song
         console.log(`Skipped ${serverQueue.songs[0].title}.`);
         return message.channel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\*.`);
             //.then(msg => setTimeout(() => msg.delete(), 30 * 1000)); //delete after 30 seconds
     }
     let pos = parseInt(args[1]); //check if position is an integer
-    if (isNaN(pos)) { //skip by keyword
+    //TODO: make into function
+    if (isNaN(pos)) { //skip by keyword 
         let query = message.content.substring(message.content.indexOf(' '), message.content.length).trim();
         if (args[1] == 'last' || args[1] == 'end') { //check certain keywords first
             pos = serverQueue.songs.length-1;
@@ -904,8 +1052,12 @@ function skip(message, serverQueue){
 
     serverQueue.keep = false; //don't keep skipped song in the queue
  }
-
- //used to skip to a song
+/**
+ * Skip to a song in the queue.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue  Contains information related to a Discord server's queue.
+ * @returns 
+ */
 function skipto(message,serverQueue){
     const args = message.content.split(" ");
     let pos = parseInt(args[1]);
@@ -916,6 +1068,7 @@ function skipto(message,serverQueue){
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to skip to.");
     }
+    //TODO: make into function
     if (isNaN(pos)) { //skip by keyword
         let query = message.content.substring(message.content.indexOf(' '), message.content.length).trim();
         if (args[1] == 'last' || args[1] == 'end') { //check certain keywords first
@@ -930,7 +1083,7 @@ function skipto(message,serverQueue){
             return message.channel.send(`❌ No song in queue with keyword \`${query}\`.`);
         } 
     } else if (pos < 0 || pos > serverQueue.songs.length-1){
-        return message.channel.send(`❌ Skip position out of bounds. There are \*\*${serverQueue.songs.length-1}\*\* songs in the queue.`);
+        return message.channel.send(`❌ There are only \*\*${serverQueue.songs.length-1}\*\* songs in the queue.`);
     } 
     if (pos == 0) { 
         return message.channel.send(`❌ The song is already playing.`);
@@ -940,26 +1093,36 @@ function skipto(message,serverQueue){
     serverQueue.player.stop();                  //skip current playing song 
 }
 
-function lyrics(message, serverQueue){
+/**
+ * Displays lyrics for the current playing song.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue  Contains information related to a Discord server's queue.
+ * @returns 
+ */
+async function lyrics(message, serverQueue){
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to skip.");
     }
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to get lyrics for.");
     }
-    const {title, duration} = serverQueue.songs[0];
+    const {title, duration, artist} = serverQueue.songs[0];
     const options = {
         apiKey: geniusApiKey,
         title: title,
         artist: ' ',
         optimizeQuery: true
     };
+    console.log(`Finding lyrics for ${options.title}`);
+    const searchMsg = await message.channel.send(`Finding lyrics for \*\*${title}\*\* 🔎`);
     getLyrics(options)
             .then((lyrics) => { 
+                searchMsg.delete();
                 if (!lyrics) { 
+                    console.log(`No lyrics found.`);
                     return message.channel.send(`❌ No lyrics found for \*\*${title}\*\*`)
                 }
-                console.log(`Found lyrics for ${serverQueue.songs[0].title}`);
+                console.log(`Found lyrics for ${serverQueue.songs[0].title}.`);
                 let strings = splitText2(lyrics);
                 for (string of strings) {
                     message.channel.send(string).then(string => setTimeout(() => string.delete(), duration*1000));
@@ -969,6 +1132,12 @@ function lyrics(message, serverQueue){
             .catch((e) => console.error(e));
 }
 
+/**
+ * Change the volume of the bot.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ * @returns 
+ */
 function volume(message, serverQueue){
     let [min, max] = [0,200];
     const args = message.content.split(" ");
@@ -1014,7 +1183,7 @@ function splitText2(text, { maxLength = 1990, char = '\n', prepend = '', append 
     } else {
       splitText = text.split(char);
     }
-    if (splitText.some(elem => elem.length > maxLength)) throw new RangeError('SPLIT_MAX_LEN');
+    //if (splitText.some(elem => elem.length > maxLength)) throw new RangeError('SPLIT_MAX_LEN');
     const messages = [];
     let msg = '';
     for (const chunk of splitText) {
@@ -1028,9 +1197,9 @@ function splitText2(text, { maxLength = 1990, char = '\n', prepend = '', append 
 }
 
 /**
- * Given a number, parses it into the form of mm:ss
+ * Converts mm:ss to seconds and seconds to mm:ss.
  * @param {number} input number to parse.
- * @returns {object} object containing the parsed data.
+ * @returns {Object|number} Object containing minutes and seconds or number in seconds
  */
  function parse(input){ 
     //console.log(input);
