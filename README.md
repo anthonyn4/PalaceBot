@@ -5,7 +5,7 @@ PALACE BAY is a simple music bot compatible with YouTube and SoundCloud built on
 <br>
 ~~An example would be 'music play mood lil uzi' or 'music next'.~~ 
 <br><br>
-Works but suffers from a memory leak so it is disabled for the time being. You can enable it at your own discretion by uncommenting https://github.com/anthonyn4/MusicBot/blob/0c1549d9e5b9c5d88d67301373319ca6f5c4c9b3/main.js#L65-L78
+Works but suffers from a memory leak so it is disabled for the time being. You can enable it at your own discretion by uncommenting https://github.com/anthonyn4/PalaceBot/blob/08ca7107076e9cb8234fdc722ee9f10fb46322b0/main.js#L31 and https://github.com/anthonyn4/PalaceBot/blob/08ca7107076e9cb8234fdc722ee9f10fb46322b0/main.js#L65-L79
 ### Commands
 | Commands | Description |
 | --- | --- |
@@ -17,6 +17,7 @@ Works but suffers from a memory leak so it is disabled for the time being. You c
 | `!volume 0-200` | Set the volume of the bot from 0% to 200%.
 | `!pause` `!resume` | Pause or resume playing of the bot.|
 | `!loop` `!repeat` | Loops the queue. (type !loop or !repeat again to disable the loop) |
+| `!replay` `!again` | Replays the last played song. |
 | `!queue [n]` | Shows all the songs in the queue. (or optionally, up to n songs) |
 | `!clear` | Removes all except the current song from the queue. |
 | `!shuffle` | Shuffles all the songs in the queue. |
