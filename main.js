@@ -144,8 +144,10 @@ function command(message){
         case 'lyrics':
             lyrics(message,serverQueue);
             break;
-        case 'disconnect':
         case 'stop':    
+            stop(message,serverQueue);
+            break;
+        case 'disconnect':
         case 'kick':
         case 'leave':
             kick(message,serverQueue);
@@ -467,7 +469,6 @@ function connect(message, serverQueue, songs = []) {
     if (!serverQueue) {
         const queueConstructor = {
             //textChannel: message.channel,
-            voiceChannel: voiceChannel,
             connection: null,
             lastPlayed: null, //last played song
             songs: songs,
@@ -509,6 +510,7 @@ function connect(message, serverQueue, songs = []) {
                     ]);
                     // Seems to be reconnecting to a new channel - ignore disconnect
                 } catch (error) {
+
                     // Seems to be a real disconnect which SHOULDN'T be recovered from
                     console.log(`Forcibly destroyed the bot.`);
                     connection.destroy();
@@ -528,25 +530,22 @@ function connect(message, serverQueue, songs = []) {
             //     oldNetworking?.off('stateChange', networkStateChangeHandler);
             //     newNetworking?.on('stateChange', networkStateChangeHandler);
             //   });
-            if (getVoiceConnection(message.guild.id) != undefined) {
+            if (getVoiceConnection(message.guild.id) != null) {
                 const userCheck = setInterval(() => {
-                    //console.log(getVoiceConnection(message.guild.id));
-                    //console.log(voiceChannel);
-                    const membersInChannel = client.channels.fetch(getVoiceConnection(message.guild.id)?.packets.state.channel_id); //get the current channel of the bot
-                    //console.log(membersInChannel);
-                    if (!membersInChannel) return; //connection was most likely forcibly destroyed
-                    membersInChannel.then((ch) => { 
-                        if (ch.members.size == 1) {
-                            clearInterval(userCheck);
-                            destroy(message.guild);
-                            console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
-                        } 
-                    })
-                   
+                   // console.log(client.channels.fetch(getVoiceConnection(message.guild.id).packets.state.channel_id))
+                    client.channels.fetch(getVoiceConnection(message.guild.id).packets.state.channel_id)
+                        .then((ch) => {
+                            if (ch.members.size == 1) {
+                                destroy(message.guild);
+                                console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
+                            } 
+                        }).catch((e) => {
+                            console.error(e);
+                        }).finally(() => { 
+                            clearInterval(userCheck); 
+                        });
                 }, 10 * 1000);
-            } else {
-                clearInterval(userCheck);
-            }
+            } 
             console.log(`Connected to ${message.guild.name}`);
         } catch (err) {
             console.log(err);
@@ -633,7 +632,7 @@ async function play(message, guild, song){
 
     serverQueue.player.play(serverQueue.resource);
 
-    serverQueue.lastPlayed = serverQueue.songs[0];
+    serverQueue.lastPlayed = song;
     //console.log(`lastPlayed: ${serverQueue.lastPlayed.title}`);
 
     //event handlers for the music player
@@ -1131,6 +1130,7 @@ async function lyrics(message, serverQueue){
     const searchMsg = await message.channel.send(`Finding lyrics for \*\*${title}\*\* 🔎`);
     getLyrics(options)
             .then((lyrics) => { 
+                let song = serverQueue.songs[0];
                 searchMsg.delete();
                 if (!lyrics) { 
                     console.log(`No lyrics found.`);
@@ -1138,8 +1138,10 @@ async function lyrics(message, serverQueue){
                 }
                 console.log(`Found lyrics for ${serverQueue.songs[0].title}.`);
                 let strings = splitText2(lyrics);
+                let currentTime = song.duration - Math.floor((serverQueue.resource.playbackDuration + (song.seek*1000))/1000); //calculate remaining time in the song
+                //console.log(currentTime)
                 for (string of strings) {
-                    message.channel.send(string).then(string => setTimeout(() => string.delete(), duration*1000));
+                    message.channel.send(string).then(string => setTimeout(() => string.delete(), currentTime*1000));
                 }
                 //return message.channel.send(lyrics)
             })
