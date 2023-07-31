@@ -4,17 +4,19 @@
     Run and control the bot from a single embed
     Slash commands
 */
-
+const {splitText, parse} = require('./utils')
 //connection to discord
 const Discord = require('discord.js');
-const { addSpeechEvent, SpeechEvents } = require("discord-speech-recognition");
-const {Client, GatewayIntentBits, Partials, Events, verifyString, Message, Guild} = require('discord.js');
+const {Client, GatewayIntentBits, Partials, Events, Message, Guild} = require('discord.js');
+const {VoiceConnectionStatus, entersState, getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
+
 const {
     prefix,
     token,
     geniusApiKey,
     keyword,
 } = require('./config.json');
+
 
 //instance of the bot
 const client = new Client({ 
@@ -26,11 +28,12 @@ const client = new Client({
     ],
     partials: [Partials.Channel],
 }); 
-//addSpeechEvent(client);
 
+const { addSpeechEvent, SpeechEvents } = require("discord-speech-recognition");
 const playDL = require('play-dl');
 const { getLyrics } = require('genius-lyrics-api');
-const {VoiceConnectionStatus, entersState, getVoiceConnection, joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus} = require('@discordjs/voice');
+
+//addSpeechEvent(client);
 
 const queue = new Map(); //map of guild ID and its respective queue
 
@@ -71,7 +74,6 @@ client.on(Events.MessageCreate, messageHandler);
 //         console.log(`${voice.author.username} said '${voice.content}'`)
 //         command(voice);
 //     }
-//     //client.removeListener('speech', voiceHandler);
 // }
 // client.on(SpeechEvents.speech, voiceHandler);
 
@@ -181,11 +183,9 @@ async function execute(message, serverQueue) {
         return message.channel.send("❌ Specify a search or URL to play 🤓")
     } 
  
-    
     //check the last argument to see if it is a valid time to seek to
     //let timeToSeek = parse(args[args.length-1]);
     try { 
-
         let song = {};  //object containing song data
         let songs = []; //array of song objects
         let check = await playDL.validate(args[1].trim());
@@ -533,14 +533,14 @@ function connect(message, serverQueue, songs = []) {
             if (getVoiceConnection(message.guild.id) != null) {
                 const userCheck = setInterval(() => {
                    // console.log(client.channels.fetch(getVoiceConnection(message.guild.id).packets.state.channel_id))
-                    client.channels.fetch(getVoiceConnection(message.guild.id).packets.state.channel_id)
+                    client.channels.fetch(getVoiceConnection(message.guild.id)?.packets.state.channel_id)
                         .then((ch) => {
                             if (ch.members.size == 1) {
                                 destroy(message.guild);
                                 console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
                             } 
                         }).catch((e) => {
-                            console.error(e);
+                            //console.error(e); //usually throws an error when the bot is forcibly disconnected but idk what to do about it
                         }).finally(() => { 
                             clearInterval(userCheck); 
                         });
@@ -804,7 +804,7 @@ function showQueue(message,serverQueue){
         text = `${i}. ${serverQueue.songs[i].title}\n`;
         msg += text;
     }
-    let strings = splitText2(msg);
+    let strings = splitText(msg);
     for (string of strings) {
         message.channel.send('```' + string + '```').then(string => setTimeout(() => string.delete(), 30*1000));
     }
@@ -1137,7 +1137,7 @@ async function lyrics(message, serverQueue){
                     return message.channel.send(`❌ No lyrics found for \*\*${title}\*\*`)
                 }
                 console.log(`Found lyrics for ${serverQueue.songs[0].title}.`);
-                let strings = splitText2(lyrics);
+                let strings = splitText(lyrics);
                 let currentTime = song.duration - Math.floor((serverQueue.resource.playbackDuration + (song.seek*1000))/1000); //calculate remaining time in the song
                 //console.log(currentTime)
                 for (string of strings) {
@@ -1166,6 +1166,12 @@ function volume(message, serverQueue){
     return message.channel.send(`🔊 Volume has been set to \`${vol}%\` for \*\*${serverQueue.songs[0].title}\*\*`);
 }
 
+/**
+ * Replays the last played song.
+ * @param {Message} message A Discord message object.
+ * @param {Object} serverQueue Contains information related to a Discord server's queue.
+ * @returns 
+ */
 function replay(message, serverQueue) {
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to replay the song.");
@@ -1176,81 +1182,6 @@ function replay(message, serverQueue) {
     //console.log(`lastPlayed: ${serverQueue.lastPlayed.title}`);
     play(message,message.guild,serverQueue.lastPlayed);
 }
-
-//add splitting at specified character
-function splitText(text) {
-    const maxLength = 1999;
-    const numberOfStrings = text.length / maxLength;
-    if (text.length < maxLength) {
-        return [text];
-    }
-
-    let strings = [];
-    for (let i = 0; i<numberOfStrings;i++){
-        strings.push(text.substring(maxLength*i, maxLength*(i+1)));
-    }
-    // console.log(strings);
-    return strings;
-}
-
-//Discord's now deprecated splitMessage function (default maxLength is 2000)
-function splitText2(text, { maxLength = 1990, char = '\n', prepend = '', append = '' } = {}) {
-    text = verifyString(text);
-    if (text.length <= maxLength) return [text];
-    let splitText = [text];
-    if (Array.isArray(char)) {
-      while (char.length > 0 && splitText.some(elem => elem.length > maxLength)) {
-        const currentChar = char.shift();
-        if (currentChar instanceof RegExp) {
-          splitText = splitText.flatMap(chunk => chunk.match(currentChar));
-        } else {
-          splitText = splitText.flatMap(chunk => chunk.split(currentChar));
-        }
-      }
-    } else {
-      splitText = text.split(char);
-    }
-    //if (splitText.some(elem => elem.length > maxLength)) throw new RangeError('SPLIT_MAX_LEN');
-    const messages = [];
-    let msg = '';
-    for (const chunk of splitText) {
-      if (msg && (msg + char + chunk + append).length > maxLength) {
-        messages.push(msg + append);
-        msg = prepend;
-      }
-      msg += (msg && msg !== prepend ? char : '') + chunk;
-    }
-    return messages.concat(msg).filter(m => m);
-}
-
-/**
- * Converts mm:ss to seconds and seconds to mm:ss.
- * @param {number} input number to parse.
- * @returns {Object|number} Object containing minutes and seconds or number in seconds
- */
- function parse(input){ 
-    //console.log(input);
-    if (typeof input == "string" && input.indexOf(":") != -1) { //input in form of mm:ss
-        let time = input.split(":"); 
-        if (isNaN(time[0]) || isNaN(time[1]) || time[0] < 0 || time[1] < 0){
-            //
-        } else {    //otherwise, parse the given time 
-            let minutes = Number(time[0]*60);
-            let seconds = Number(time[1]);
-            timeToSeek = minutes+seconds;
-            return timeToSeek;
-            //console.log(timeToSeek);
-        }
-    } else if (typeof input == "number"){
-        let minutes = Math.floor(input/60);
-        let seconds = input%60 < 10 ? '0' + input%60 : input%60;
-        //return [minutes, seconds];
-        return {minutes: minutes, seconds: seconds};
-    } else {
-        return 0;
-    }
-}
-
 
 
 client.login(token);
