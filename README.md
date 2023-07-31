@@ -5,7 +5,7 @@ PALACE BAY is a simple music bot compatible with YouTube and SoundCloud built on
 <br>
 ~~An example would be 'music play mood lil uzi' or 'music next'.~~ 
 <br><br>
-Works but suffers from a memory leak so it is disabled for the time being. You can enable it at your own discretion by uncommenting https://github.com/anthonyn4/PalaceBot/blob/08ca7107076e9cb8234fdc722ee9f10fb46322b0/main.js#L31 and https://github.com/anthonyn4/PalaceBot/blob/08ca7107076e9cb8234fdc722ee9f10fb46322b0/main.js#L65-L79
+Works but suffers from a memory leak so it is disabled for the time being. You can enable it at your own discretion by uncommenting https://github.com/anthonyn4/PalaceBot/blob/02d468aded3e0fc9820cbdf707cfdfb5d6d08432/main.js#L36 and https://github.com/anthonyn4/PalaceBot/blob/02d468aded3e0fc9820cbdf707cfdfb5d6d08432/main.js#L66-L78
 ### Commands
 <sub>[] brackets denote optional arguments</sub>
 | Commands | Description |
