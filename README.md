@@ -5,8 +5,9 @@ PALACE BAY is a simple music bot compatible with YouTube and SoundCloud built on
 <br>
 ~~An example would be 'music play mood lil uzi' or 'music next'.~~ 
 <br><br>
-Works but suffers from a memory leak so it is disabled for the time being. You can enable it at your own discretion by uncommenting https://github.com/anthonyn4/PalaceBot/blob/08ca7107076e9cb8234fdc722ee9f10fb46322b0/main.js#L31 and https://github.com/anthonyn4/PalaceBot/blob/08ca7107076e9cb8234fdc722ee9f10fb46322b0/main.js#L65-L79
+Works but suffers from a memory leak so it is disabled for the time being. You can enable it at your own discretion by uncommenting https://github.com/anthonyn4/PalaceBot/blob/02d468aded3e0fc9820cbdf707cfdfb5d6d08432/main.js#L36 and https://github.com/anthonyn4/PalaceBot/blob/02d468aded3e0fc9820cbdf707cfdfb5d6d08432/main.js#L66-L78
 ### Commands
+<sub>[] brackets denote optional arguments</sub>
 | Commands | Description |
 | --- | --- |
 | `!help` `!commands` | Lists all commands. |
@@ -20,11 +21,12 @@ Works but suffers from a memory leak so it is disabled for the time being. You c
 | `!replay` `!again` | Replays the last played song. |
 | `!queue [n]` | Shows all the songs in the queue. (or optionally, up to n songs) |
 | `!clear` | Removes all except the current song from the queue. |
+| `!stop` | Removes all of the songs from the queue. | 
 | `!shuffle` | Shuffles all the songs in the queue. |
 | `!seek mm:ss` | Seek to a desired position in the current song. |
 | `!ff mm:ss` | Fast forward a specified amount in the current song. |
 | `!lyrics` | Displays lyrics for the current song. |
-| `!stop` `!kick` `!leave` | Removes the bot from your voice channel. |
+| `!kick` `!leave` | Removes the bot from your voice channel. |
 <!-- | `!join/connect` | Summons the bot to your current voice channel. (using !play will automatically invoke this) | -->
 
 ## Installation
