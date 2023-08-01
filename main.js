@@ -247,7 +247,7 @@ async function execute(message, serverQueue) {
                         duration: search[0].durationInSec,
                         durationTime: parse(search[0].durationInSec),
                         seek: 0,
-                        //seekTime: parse(timeToSeek),
+                        seekTime: parse(0),
                         source: 'yt'
                     }
                     songs.push(song);
@@ -344,7 +344,7 @@ async function execute(message, serverQueue) {
                         url: search[0].url,
                         duration: search[0].durationInSec,
                         durationTime: parse(search[0].durationInSec),
-                        //seek: timeToSeek,
+                        seek: 0,
                         //seekTime: parse(timeToSeek),
                         source: 'yt'
                     }
@@ -371,7 +371,7 @@ async function execute(message, serverQueue) {
                             url: search[0].url,
                             duration: search[0].durationInSec,
                             durationTime: parse(search[0].durationInSec),
-                            //seek: timeToSeek,
+                            seek: 0,
                             //seekTime: parse(timeToSeek),
                             source: 'yt'
                         }
@@ -536,13 +536,13 @@ function connect(message, serverQueue, songs = []) {
                     client.channels.fetch(getVoiceConnection(message.guild.id)?.packets.state.channel_id)
                         .then((ch) => {
                             if (ch.members.size == 1) {
+                                clearInterval(userCheck);
                                 destroy(message.guild);
                                 console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
                             } 
                         }).catch((e) => {
+                            clearInterval(userCheck);
                             //console.error(e); //usually throws an error when the bot is forcibly disconnected but idk what to do about it
-                        }).finally(() => { 
-                            clearInterval(userCheck); 
                         });
                 }, 10 * 1000);
             } 
@@ -610,7 +610,7 @@ async function play(message, guild, song){
    
     try {
         if (song.source === 'yt' && song.seek > 0){  //only yt songs can be seeked, but there are songs from various sources in the playlist
-            console.log(`Seeked ${song.seek} seconds into the song.`);
+            //console.log(`Seeked ${song.seek} seconds into ${song.title}.`);
             stream = await playDL.stream(song.url, {seek: song.seek});
         } else {
             //console.trace();
@@ -657,7 +657,7 @@ async function play(message, guild, song){
         play(message, guild, serverQueue.songs[0]);
     })
 
-    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${guild.name}"`); //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
+    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${guild.name}" starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
     if (serverQueue.loop == true) {
         // don't print anything
     } else {
@@ -889,7 +889,8 @@ function help(message){
     !play url -- plays a YouTube or SoundCloud URL 
     !pause -- pause the bot
     !resume -- resume the bot
-    !stop/kick/leave -- bye bye bot ! 
+    !stop -- resets the bot
+    !kick/leave -- bye bye bot ! 
 
     !skip number|query -- search for a song to skip in the queue by number or query
     !skipto number|query -- search for a song to jump to in the queue by number or query
@@ -939,7 +940,7 @@ function shuffle(message, serverQueue) {
  * @param {number} [time=0] Number of seconds to seek into the song.
  * @returns 
  */
-function seek(message,serverQueue, time = 0) {
+function seek(message,serverQueue, time = -1) {
     //console.log(`time: ${time}`)
     const args = message.content.split(" ");
     if(!message.member.voice.channel){
@@ -955,7 +956,7 @@ function seek(message,serverQueue, time = 0) {
     //console.log(serverQueue.resource.playbackDuration);
     let timeToSeek = 0;
     let seekTime = 0;
-    if (time == 0) { //if no timestamp is given then process the user's timestamp
+    if (time == -1) { //if no timestamp is given then process the user's timestamp
         timeToSeek = parse(args[1]) || parse(time);
         seekTime = parse(timeToSeek);
         //console.log(timeToSeek);
@@ -991,7 +992,7 @@ function seek(message,serverQueue, time = 0) {
  * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns 
  */
-function forward(message,serverQueue){
+async function forward(message,serverQueue){
     const args = message.content.split(" ");
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to seek.");
@@ -1003,15 +1004,18 @@ function forward(message,serverQueue){
         return message.channel.send("❌ Song must be from YouTube to forward.");
     }
     let song = serverQueue.songs[0];
-    let amountToForward = parse(args[1]) || 10; //convert mm:ss format to seconds or forward by 10 seconds by default
-    let currentTime = Math.floor((serverQueue.resource.playbackDuration + (song.seek*1000))/1000);
-    let newTime = currentTime + amountToForward; 
+    let amountToForward = parseInt(parse(args[1]) || args[1]); 
+    //if (amountToForward <= 0) return;
+    let currentTime = Math.floor((serverQueue.resource.playbackDuration + (song.seek*1000))/1000); //convert to seconds
+    let newTime = Math.max(0, currentTime + amountToForward); 
+    console.log(`Forwarded ${amountToForward} seconds in ${song.title}`);
     if (newTime > song.duration) {
         serverQueue.player.stop(); //just skip the song if they forward too far
-    } else {
-        console.log(`Forwarded ${args[1]} in ${song.title}`);
-        seek(message, serverQueue, newTime);
-    }
+        return;
+    } 
+    const ffMsg = await message.channel.send(`Forwarding \`${args[1]}\` in \*\*${song.title}\*\*...`);
+    seek(message, serverQueue, newTime);
+    ffMsg.delete();
 }
 
 /**
