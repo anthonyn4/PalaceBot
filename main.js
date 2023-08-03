@@ -657,12 +657,12 @@ async function play(message, guild, song){
         play(message, guild, serverQueue.songs[0]);
     })
 
-    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${guild.name}" starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
+    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${guild.name}"`) //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
     if (serverQueue.loop == true) {
         // don't print anything
     } else {
         if (song.seek > 0){
-            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`);
+            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\``) //starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`); 
                 //.then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
         } else {
             message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
@@ -1142,7 +1142,8 @@ async function lyrics(message, serverQueue){
                 }
                 console.log(`Found lyrics for ${serverQueue.songs[0].title}.`);
                 let strings = splitText(lyrics);
-                let currentTime = song.duration - Math.floor((serverQueue.resource.playbackDuration + (song.seek*1000))/1000); //calculate remaining time in the song
+                let startTime = song.seek ?? 0;
+                let currentTime = song.duration - Math.floor((serverQueue.resource.playbackDuration + (startTime*1000))/1000); //calculate remaining time in the song
                 //console.log(currentTime)
                 for (string of strings) {
                     message.channel.send(string).then(string => setTimeout(() => string.delete(), currentTime*1000));
