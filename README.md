@@ -12,7 +12,7 @@ Works but suffers from a memory leak so it is disabled for the time being. You c
 | --- | --- |
 | `!help` `!commands` | Lists all commands. |
 | `!play [-sc] [-pl/-al] query`| Searches for the specified query on YouTube. (You can search for playlists `-pl` or albums(SoundCloud only) `-al`  or search on SoundCloud `-sc`) |
-| `!play url` | Plays the requested url in your current voice channel. (Supports playlists and radio as well)
+| `!play url/mp3` | Plays the requested url or mp3 in your current voice channel. (Supports playlists, radio, attachments, and Discord URLs as well)
 | `!skip` `!remove` `!next [keyword/position]` | Skip the current song. (or optionally, specify a keyword or position to remove a song from the queue) |
 | `!skipto keyword/position` | Jump to a desired position or song containing the keyword in the queue. |
 | `!volume 0-200` | Set the volume of the bot from 0% to 200%.
