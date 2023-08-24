@@ -33,7 +33,7 @@ const { addSpeechEvent, SpeechEvents } = require("discord-speech-recognition");
 const playDL = require('play-dl');
 const { getLyrics } = require('genius-lyrics-api');
 
-//addSpeechEvent(client);
+addSpeechEvent(client);
 
 const queue = new Map(); //map of guild ID and its respective queue
 
@@ -63,19 +63,19 @@ const messageHandler = (message) => {
 }
 client.on(Events.MessageCreate, messageHandler);
 
-// const voiceHandler = (voice) => {
-//     if (!voice.content) {
-//         return; //if no speech detected, do nothing
-//     }   
-//     //console.log(`${voice.author.username} said ${voice.content}`);
-//     if (voice.content.toLowerCase().includes(keyword)){
-//         //console.log(voice.content);
-//         voice.content = `!${voice.content.toLowerCase().split(keyword)[1].trim()}`; //append '!' so everything else works
-//         console.log(`${voice.author.username} said '${voice.content}'`)
-//         command(voice);
-//     }
-// }
-// client.on(SpeechEvents.speech, voiceHandler);
+const voiceHandler = (voice) => {
+    if (!voice.content) {
+        return; //if no speech detected, do nothing
+    }   
+    //console.log(`${voice.author.username} said ${voice.content}`);
+    if (voice.content.toLowerCase().includes(keyword)){
+        //console.log(voice.content);
+        voice.content = `!${voice.content.toLowerCase().split(keyword)[1].trim()}`; //append '!' so everything else works
+        console.log(`${voice.author.username} said '${voice.content}'`)
+        command(voice);
+    }
+}
+client.on(SpeechEvents.speech, voiceHandler);
 
 process.on('warning', e => console.warn(e.stack));
 
@@ -165,6 +165,7 @@ function command(message){
     //console.log(`message events: ${client.listenerCount('messageCreate', messageHandler)}`);
 
 }
+
 /**
  * Processes user input to either search for a song or process a URL.
  * @param {Message} message A Discord message object.
@@ -174,17 +175,52 @@ function command(message){
 async function execute(message, serverQueue) {
     const args = message.content.split(" ");
     const voiceChannel = message.member.voice.channel;
+    const attachedUrl = message.attachments.first()?.url ?? 0;
     if (!voiceChannel){
         return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
        //return message.channel.send("You need to be in a channel to play music.");
     }
    
-    if (args.length == 1) {//someone invokes play command without any arguments
-        return message.channel.send("❌ Specify a search or URL to play 🤓")
+    if (args.length == 1 && !attachedUrl) {//someone invokes play command without any arguments
+        return message.channel.send("❌ Specify a search, URL, or mp3 to play 🤓")
     } 
- 
+    processMusicUrl(message,serverQueue); 
+    
+}
+
+// function processMp3Url(message, serverQueue) {
+//     const args = message.content.split(" ");
+//     const attachment = message.attachments.first();
+//     song = {
+//         title: attachment?.name ?? args[1].slice(args[1].lastIndexOf('/')+1),
+//         url: attachment?.url ?? args[1]
+//     }
+//     connect(message, serverQueue).then(() =>{
+//     }).catch(() => {
+//     }).finally(() => {
+//         const q = queue.get(message.guild.id)
+//         q.resource = createAudioResource(song.url)
+    
+//         q.connection.subscribe(q.player);
+    
+//         q.player.play(q.resource);
+//         //console.log(q.resource.metadata)
+    
+//         var errorListener = error => {
+//             console.error(`Error: ${error.message} with resource ${error.resource.title}`);
+//         };
+//         q.player.on('error', errorListener)
+//         console.log(`Playing ${title} in "${message.guild.name}"`)
+//         return message.channel.send(`🎶 Now playing \*\*${song.title}\*\* 🎵`);
+//     })
+// }
+
+async function processMusicUrl(message,serverQueue) { 
     //check the last argument to see if it is a valid time to seek to
     //let timeToSeek = parse(args[args.length-1]);
+    const args = message.content.split(" ");
+    const attachment = message.attachments.first() ?? 0; //if attachment does not exist, assign 0 instead
+    if (attachment) args[1] = attachment.url; //if we dont assign args[1] to url, args[1].trim will fail
     try { 
         let song = {};  //object containing song data
         let songs = []; //array of song objects
@@ -192,7 +228,13 @@ async function execute(message, serverQueue) {
         let searchSource = {youtube: 'video'};  //where we want to perform the search and what type of result
         //console.log(check)  //debug
         if (check === false) {
-            return message.channel.send("❌ Failed to validate URL or search.");
+            //if (!attachment) return message.channel.send("❌ Failed to validate URL or search.");
+            song = {
+                title: attachment?.name ?? args[1].slice(args[1].lastIndexOf('/')+1),
+                url: attachment?.url ?? args[1],
+                source: 'discord'
+            }
+            songs.push(song);
         } else if (check === 'search') {
             let searchMsg = '';
             let query = message.content.substring(message.content.indexOf(' '), message.content.length)
@@ -419,34 +461,40 @@ async function execute(message, serverQueue) {
     //     }
     // }
     //console.log(serverQueue);
-        if(connect(message,serverQueue,songs)){
-            play(message, message.guild, songs[0]);
-        } else {
-            if (serverQueue.songs.length == 0) {   //if queue was empty, begin playing the first song 
-                serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue, needs to be done after the length is checked 
-                play(message, message.guild, serverQueue.songs[0]);
-            } else {
-                serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue
-    
-                if (songs.length > 1) {
-                    //don't display anything
+    connect(message,serverQueue,songs)
+        .then( 
+            () => { //on resolve (queue created)
+                play(message, message.guild, songs[0])
+            },
+            () => { //on reject (queue exists)
+                if (serverQueue.songs.length == 0) {   //if queue was empty, begin playing the first song 
+                    serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue, needs to be done after the length is checked 
+                    play(message, message.guild, serverQueue.songs[0]);
                 } else {
-                    // if (song.seek > 0){ 
-                    //     console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue starting at ${song.seekTime.minutes}:${song.seekTime.seconds}`);
-                    //     return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
-                    // } 
-                    console.log(`Added ${songs[0].title} to the queue. {${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}}`);
-                    return message.channel.send(`\*\*${songs[0].title}\*\* \`${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}\` has been added to the queue. `);
-                }
-            }
-        }
+                    serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue
+                    if (songs.length > 1) {
+                        //don't display anything
+                    } else {
+                        // if (song.seek > 0){ 
+                        //     console.log(`Added ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} to the queue starting at ${song.seekTime.minutes}:${song.seekTime.seconds}`);
+                        //     return message.channel.send(`\*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` has been added to the queue starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\`. `);
+                        // } 
+                        if (song.source == 'discord'){
+                            console.log(`Added ${songs[0].title} to the queue.`);
+                            return message.channel.send(`\*\*${songs[0].title}\*\* has been added to the queue.`);
+                        } else {
+                            console.log(`Added ${songs[0].title} to the queue. {${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}}`);
+                            return message.channel.send(`\*\*${songs[0].title}\*\* \`${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}\` has been added to the queue. `);
+                        }
+                    }
+                } 
+             })
     } catch (e) {
+        message.channel.send(`\`${e.message}\``)
         console.error(e);
         return;
     }
-    //setTimeout(() => {message.delete(), 30*1000}); //delete user message after 30 seconds
 }
-
 
 /**
  * Establishes a connection between a Discord voice channel and its associated queue.
@@ -455,7 +503,7 @@ async function execute(message, serverQueue) {
  * @param {Array} songs Array of song objects
  * @returns {number} 1 if successful, 0 if failed
  */
-function connect(message, serverQueue, songs = []) {
+async function connect(message, serverQueue, songs = []) {
     //console.log('connecting')
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel){
@@ -466,98 +514,99 @@ function connect(message, serverQueue, songs = []) {
      assign the current guild id to the serverqueue, 
      and push the requested song onto the array.
     */
-    if (!serverQueue) {
-        const queueConstructor = {
-            //textChannel: message.channel,
-            connection: null,
-            lastPlayed: null, //last played song
-            songs: songs,
-            player: null,
-            resource: null,
-            loop: false,
-            //loopall: false,
-            keep: false, //whether or not the current song should be kept in the queue, used for skipping songs while looping
-            //timeoutID: undefined    //separate timeout ID for each guild
-            volume: 100, //default 100% volume
-        };
-
-        queue.set(message.guild.id, queueConstructor);
-        //queueConstructor.songs.push(song);
-
-        //attempt a connection with the user's voice channel, create the audio player and begin playing the first song
-        try {
-            let connection = joinVoiceChannel({
-                channelId: voiceChannel.id,
-                guildId: message.guild.id,
-                adapterCreator: message.guild.voiceAdapterCreator,
-                selfDeaf: false
-            })
-            queueConstructor.connection = connection;
-            queueConstructor.player = createAudioPlayer(
-                /*{
-                behaviors: {
-                    noSubscriber: NoSubscriberBehavior.Stop,
-                },
-                }*/
-            );
-
-            //check if bot is moving channels or forcibly disconnected
-            connection.once(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
-                try {
-                    await Promise.race([
-                        entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
-                        entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
-                    ]);
-                    // Seems to be reconnecting to a new channel - ignore disconnect
-                } catch (error) {
-
-                    // Seems to be a real disconnect which SHOULDN'T be recovered from
-                    console.log(`Forcibly destroyed the bot.`);
-                    connection.destroy();
-                    queue.delete(message.guild.id);
-                }
-            });
-
-            // connection.once('stateChange', (oldState, newState) => {
-            //     const oldNetworking = Reflect.get(oldState, 'networking');
-            //     const newNetworking = Reflect.get(newState, 'networking');
-              
-            //     const networkStateChangeHandler = (oldNetworkState, newNetworkState) => {
-            //       const newUdp = Reflect.get(newNetworkState, 'udp');
-            //       clearInterval(newUdp?.keepAliveInterval);
-            //     }
-              
-            //     oldNetworking?.off('stateChange', networkStateChangeHandler);
-            //     newNetworking?.on('stateChange', networkStateChangeHandler);
-            //   });
-            if (getVoiceConnection(message.guild.id) != null) {
-                const userCheck = setInterval(() => {
-                   // console.log(client.channels.fetch(getVoiceConnection(message.guild.id).packets.state.channel_id))
-                    client.channels.fetch(getVoiceConnection(message.guild.id)?.packets.state.channel_id)
-                        .then((ch) => {
-                            if (ch.members.size == 1) {
+   return new Promise((resolve,reject) => {
+        if (!serverQueue) {
+            const queueConstructor = {
+                //textChannel: message.channel,
+                connection: null,
+                lastPlayed: null, //last played song
+                songs: songs,
+                player: null,
+                resource: null,
+                loop: false,
+                //loopall: false,
+                keep: false, //whether or not the current song should be kept in the queue, used for skipping songs while looping
+                //timeoutID: undefined    //separate timeout ID for each guild
+                volume: 100, //default 100% volume
+            };
+        
+            queue.set(message.guild.id, queueConstructor);
+            //queueConstructor.songs.push(song);
+        
+            //attempt a connection with the user's voice channel, create the audio player and begin playing the first song
+            try {
+                let connection = joinVoiceChannel({
+                    channelId: voiceChannel.id,
+                    guildId: message.guild.id,
+                    adapterCreator: message.guild.voiceAdapterCreator,
+                    selfDeaf: false
+                })
+                queueConstructor.connection = connection;
+                queueConstructor.player = createAudioPlayer(
+                    /*{
+                    behaviors: {
+                        noSubscriber: NoSubscriberBehavior.Stop,
+                    },
+                    }*/
+                );
+        
+                //check if bot is moving channels or forcibly disconnected
+                connection.once(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
+                    try {
+                        await Promise.race([
+                            entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+                            entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+                        ]);
+                        // Seems to be reconnecting to a new channel - ignore disconnect
+                    } catch (error) {
+                        // Seems to be a real disconnect which SHOULDN'T be recovered from
+                        console.log(`Forcibly destroyed the bot.`);
+                        connection.destroy();
+                        queue.delete(message.guild.id);
+                    }
+                });
+        
+                // connection.once('stateChange', (oldState, newState) => {
+                //     const oldNetworking = Reflect.get(oldState, 'networking');
+                //     const newNetworking = Reflect.get(newState, 'networking');
+                    
+                //     const networkStateChangeHandler = (oldNetworkState, newNetworkState) => {
+                //       const newUdp = Reflect.get(newNetworkState, 'udp');
+                //       clearInterval(newUdp?.keepAliveInterval);
+                //     }
+                    
+                //     oldNetworking?.off('stateChange', networkStateChangeHandler);
+                //     newNetworking?.on('stateChange', networkStateChangeHandler);
+                //   });
+                if (getVoiceConnection(message.guild.id) != null) {
+                    const userCheck = setInterval(() => {
+                        // console.log(client.channels.fetch(getVoiceConnection(message.guild.id).packets.state.channel_id))
+                        client.channels.fetch(getVoiceConnection(message.guild.id)?.packets.state.channel_id)
+                            .then((ch) => {
+                                if (ch.members.size == 1) {
+                                    clearInterval(userCheck);
+                                    destroy(message.guild);
+                                    console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
+                                } 
+                            }).catch((e) => {
                                 clearInterval(userCheck);
-                                destroy(message.guild);
-                                console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
-                            } 
-                        }).catch((e) => {
-                            clearInterval(userCheck);
-                            //console.error(e); //usually throws an error when the bot is forcibly disconnected but idk what to do about it
-                        });
-                }, 10 * 1000);
-            } 
-            console.log(`Connected to ${message.guild.name}`);
-        } catch (err) {
-            console.log(err);
-            queue.delete(message.guild.id); //on error, trash the serverqueue
-            message.channel.send(err);
+                                //console.error(e); //usually throws an error when the bot is forcibly disconnected but idk what to do about it
+                            });
+                    }, 10 * 1000);
+                } 
+                console.log(`Connected to ${message.guild.name}`);
+            } catch (err) {
+                console.log(err);
+                queue.delete(message.guild.id); //on error, trash the serverqueue
+                message.channel.send(`\`${err.message}\``)
+                return;
+            }
+            resolve('Queue created');
+        } else {
+            reject('Queue exists');
         }
-        //console.log('queue created')
-        return 1;
-    } else {
-        //console.log('queue exists');
-        return 0;
-    }
+   })
+
 } 
 /**
  * Destroys the queue and its voice connection.
@@ -605,27 +654,30 @@ async function play(message, guild, song){
     //     serverQueue.timeoutID = undefined;
     // } 
     
-    let stream;
+    let stream = {
+        stream: null
+    };
     //console.log(song.source);
    
     try {
-        if (song.source === 'yt' && song.seek > 0){  //only yt songs can be seeked, but there are songs from various sources in the playlist
+        if (song.source == 'yt' && song.seek > 0){  //only yt songs can be seeked, but there are songs from various sources in the playlist
             //console.log(`Seeked ${song.seek} seconds into ${song.title}.`);
             stream = await playDL.stream(song.url, {seek: song.seek});
+        } else if (song.source == 'discord') {
+            stream.stream = song.url;   
         } else {
-            //console.trace();
-            stream = await playDL.stream(song.url);  
+            stream = await playDL.stream(song.url); 
         }
+        serverQueue.resource = createAudioResource(stream.stream, {
+            inputType: stream.type,
+            inlineVolume: true
+        });
     } catch (e) {
-        console.error(e);
-        return; //stop executing function
+       console.error(e);
+       return message.channel.send(`${e.message}`);
     }
     
   
-    serverQueue.resource = createAudioResource(stream.stream, {
-        inputType: stream.type,
-        inlineVolume: true
-    });
     serverQueue.resource.volume.setVolume(serverQueue.volume/100);
 
     serverQueue.connection.subscribe(serverQueue.player);
@@ -657,14 +709,15 @@ async function play(message, guild, song){
         play(message, guild, serverQueue.songs[0]);
     })
 
-    console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${guild.name}"`) //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
     if (serverQueue.loop == true) {
         // don't print anything
     } else {
-        if (song.seek > 0){
-            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\``) //starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`); 
+        if (song.source == 'discord'){
+            console.log(`Playing ${song.title} in "${guild.name}"`)
+            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* 🎵`) //starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`); 
                 //.then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
         } else {
+            console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${guild.name}"`) //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
             message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
                 //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         }
@@ -1163,7 +1216,7 @@ function volume(message, serverQueue){
     let [min, max] = [0,200];
     const args = message.content.split(" ");
     let vol = parseInt(args[1])
-    if(vol < min || vol > max) {
+    if(vol < min || vol > max || isNaN(vol)) {
         return message.channel.send(`❌ Volume must be 0% to 200%.`)
     }
     //serverQueue.volume = vol;
@@ -1185,7 +1238,8 @@ function replay(message, serverQueue) {
         return message.channel.send("❌ No song to replay. (Play a song before trying to replay it)");
     }
     //console.log(`lastPlayed: ${serverQueue.lastPlayed.title}`);
-    play(message,message.guild,serverQueue.lastPlayed);
+    serverQueue.songs.splice(1,0,serverQueue.lastPlayed);
+    play(message,message.guild,serverQueue.songs[0]);
 }
 
 
