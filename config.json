@@ -1,5 +1,6 @@
 {
     "prefix": "!",
-    "token":"YOUR TOKEN HERE", 
-    "geniusApiKey":"YOUR GENIUS API KEY HERE"
+    "token": "YOUR TOKEN HERE", 
+    "geniusApiKey": "YOUR GENIUS API KEY HERE",
+    "keyword": "YOUR KEYWORD FOR VOICE COMMANDS"
 }
