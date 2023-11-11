@@ -1,5 +1,5 @@
 # PALACE BAY
-PALACE BAY is a simple music bot compatible with YouTube and SoundCloud built on [discord.js](https://discord.js.org). This bot is generally self-hosted or ran on a dedicated server such as a Raspberry Pi. The bot runs on [Node.js](https://nodejs.org/en) and uses the [play-dl](https://play-dl.github.io/index.html) library to function.
+PALACE BAY is a simple, text-based music bot compatible with YouTube and SoundCloud built on [discord.js](https://discord.js.org). This bot is generally self-hosted or ran on a dedicated server such as a Raspberry Pi. The bot runs on [Node.js](https://nodejs.org/en) and uses the [play-dl](https://play-dl.github.io/index.html) library to function.
 ## Features
 The music bot also responds to voice commands as well. Edit your config.json to include your desired keyword to invoke the voice commands. Most commands should be compatible with voice but not all. 
 <br><br>
