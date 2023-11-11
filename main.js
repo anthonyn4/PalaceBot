@@ -269,7 +269,7 @@ async function processMusic(message,serverQueue) {
                 source: searchSource
             })
             searchMsg.delete();
-            console.log(search)
+            //console.log(search)
             //console.log(searchSource);
             if (search.length == 0){    
                 return message.channel.send(`❌ No results found for  '${request}'  😢`);
