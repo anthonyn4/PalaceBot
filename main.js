@@ -88,12 +88,14 @@ client.on(SpeechEvents.speech, voiceHandler);
 
 process.on('warning', e => console.warn(e.stack));
 
+
+//TODO: remove serverQueue argument from functions
 /**
  * Executes a command based on user input.
  * @param {Message} message A Discord message object.
  */
 function execute(message){
-    const serverQueue = queue.get(message.guild.id);
+    //const serverQueue = queue.get(message.guild.id);
 
     const args = message.content.slice(prefix.length).split(' ');
     //console.log(args);
@@ -107,55 +109,55 @@ function execute(message){
     message.content = message.content.replace(new RegExp(`\!${command}`, 'i'),'');
     switch(command){
         case 'join': case 'connect':
-            connect(message,serverQueue);
+            connect(message);
             break;
         case 'p': case 'play': case 'put on':
-            processMusic(message, serverQueue);
+            processMusic(message);
             break;
         case 'next': case 'remove': case 'skip':
-            skip(message, serverQueue);
+            skip(message);
             break;
         case 'skipto':
-            skipto(message,serverQueue);
+            skipto(message);
             break;
         case 'vol': case 'volume':
-            volume(message,serverQueue);
+            volume(message);
             break;
         case 'pause':
-            pause(message,serverQueue);
+            pause(message);
             break;
         case 'unpause': case 'resume':
-            resume(message, serverQueue);
+            resume(message);
             break;
         case 'again': case 'replay': case 'run that shit back':
-            replay(message, serverQueue);
+            replay(message);
             break;
         case 'repeat': case 'loop':
-            loopSong(message, serverQueue);
+            loopSong(message);
             break;
         case 'np': case 'q': case 'queue':
-            showQueue(message,serverQueue);
+            showQueue(message);
             break;
         case 'clear':
-            clear(message, serverQueue);
+            clear(message);
             break;
         case 'shuffle':
-            shuffle(message,serverQueue);
+            shuffle(message);
             break;
         case 'seek':
-            seek(message,serverQueue);
+            seek(message);
             break;
         case 'ff': case 'forward':
-            forward(message,serverQueue);
+            forward(message);
             break;
         case 'lyrics':
-            lyrics(message,serverQueue);
+            lyrics(message);
             break;
         case 'shut': case 'stop':    
-            stop(message,serverQueue);
+            stop(message);
             break;
         case 'die': case 'kill': case 'disconnect': case 'kick': case 'leave':
-            kick(message,serverQueue);
+            kick(message);
             break;
         case 'help': case 'commands':
         //default:
@@ -198,7 +200,9 @@ function execute(message){
  * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns {Message} A message to the channel based on the user input.
  */
-async function processMusic(message,serverQueue) { 
+async function processMusic(message) { 
+    const serverQueue = queue.get(message.guild.id);
+
     //check the last argument to see if it is a valid time to seek to
     //let timeToSeek = parse(args[args.length-1]);
 
@@ -269,7 +273,7 @@ async function processMusic(message,serverQueue) {
                 source: searchSource
             })
             searchMsg.delete();
-            console.log(search)
+            //console.log(search)
             //console.log(searchSource);
             if (search.length == 0){    
                 return message.channel.send(`❌ No results found for  '${request}'  😢`);
@@ -459,7 +463,7 @@ async function processMusic(message,serverQueue) {
     //     }
     // }
     //console.log(serverQueue);
-    connect(message,serverQueue,songs)
+    connect(message,songs)
     .then( 
         () => { //on resolve (queue created)
             play(message, message.guild, songs[0])
@@ -541,8 +545,8 @@ function addSong(message, songs){
  * @param {Array} songs Array of song objects
  * @returns {Promise}
  */
-async function connect(message, serverQueue, songs = []) {
-    //console.log('connecting')
+async function connect(message, songs = []) {
+    const serverQueue = queue.get(message.guild.id);
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel){
         return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
@@ -769,10 +773,11 @@ async function play(message, guild, song){
 /**
  * Clears all the songs in the queue.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns {Message} A message to the channel on whether or not the queue has been cleared.
  */
-function clear(message, serverQueue){
+function clear(message){
+    const serverQueue = queue.get(message.guild.id);
+
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to clear the queue.");
     }
@@ -794,10 +799,10 @@ function clear(message, serverQueue){
 /**
  * Loops the queue.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns {Message} A message that indicates the state of the loop.
  */
-function loopSong(message, serverQueue){
+function loopSong(message){
+    const serverQueue = queue.get(message.guild.id);
     const args = message.content.split(" ");
 
     if(!message.member.voice.channel){
@@ -868,10 +873,11 @@ function loopSong(message, serverQueue){
 /**
  * Shows the queue of songs.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns {Message} A message showing the queue of songs.
  */
-function showQueue(message,serverQueue){
+function showQueue(message){
+    const serverQueue = queue.get(message.guild.id);
+
     const args = message.content.split(" ");
     let pos = 999; 
 
@@ -908,10 +914,11 @@ function showQueue(message,serverQueue){
 /**
  * Pauses the song.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns {Message} A message showing if the song has been paused or not.
  */
-function pause(message, serverQueue){
+function pause(message){
+    const serverQueue = queue.get(message.guild.id);
+
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to pause the song.");
     }
@@ -930,9 +937,10 @@ function pause(message, serverQueue){
 /**
  * Resumes the song.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue Contains information related to a Discord server's queue.
  */
-function resume(message, serverQueue){
+function resume(message){
+    const serverQueue = queue.get(message.guild.id);
+
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to resume the song.");
     }
@@ -966,9 +974,10 @@ function stop(message, serverQueue) {   //same thing as clear i guess
 /**
  * Removes and cleans up the bot from the provided serverQueue
  * @param {String} message A Discord message object.
- * @param {Object} serverQueue
  */
-function kick(message, serverQueue){
+function kick(message){    
+    const serverQueue = queue.get(message.guild.id);
+
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to kick the bot");
     }
@@ -1018,10 +1027,11 @@ function help(message){
 /**
  * Shuffles the queue of songs.
  * @param {Message} message  A Discord message object.
- * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns 
  */
-function shuffle(message, serverQueue) {
+function shuffle(message) {
+    const serverQueue = queue.get(message.guild.id);
+
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to stop the music.");
     }
@@ -1040,11 +1050,12 @@ function shuffle(message, serverQueue) {
 /**
  * Seek to a desired time in a song.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @param {number} [time=0] Number of seconds to seek into the song.
  * @returns 
  */
-function seek(message,serverQueue, time = -1) {
+function seek(message, time = -1) {
+    const serverQueue = queue.get(message.guild.id);
+
     //console.log(`time: ${time}`)
     const args = message.content.split(" ");
     if(!message.member.voice.channel){
@@ -1095,10 +1106,11 @@ function seek(message,serverQueue, time = -1) {
 /**
  * Fast forward a set amount of time in a song.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns 
  */
-function forward(message,serverQueue){
+function forward(message){
+    const serverQueue = queue.get(message.guild.id);
+
     const args = message.content.split(" ");
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to seek.");
@@ -1133,10 +1145,10 @@ function forward(message,serverQueue){
 /**
  * Skip a song in the queue.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns 
  */
-function skip(message, serverQueue){
+function skip(message){
+    const serverQueue = queue.get(message.guild.id);
     const args = message.content.split(" ");
 
     if (!message.member.voice.channel) {
@@ -1187,10 +1199,10 @@ function skip(message, serverQueue){
 /**
  * Skip to a song in the queue.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue  Contains information related to a Discord server's queue.
  * @returns 
  */
-function skipto(message,serverQueue){
+function skipto(message){
+    const serverQueue = queue.get(message.guild.id);
     const args = message.content.split(" ");
     let pos = parseInt(args[1]);
     let song;
@@ -1228,10 +1240,11 @@ function skipto(message,serverQueue){
 /**
  * Displays lyrics for the current playing song.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue  Contains information related to a Discord server's queue.
  * @returns 
  */
-async function lyrics(message, serverQueue){
+async function lyrics(message){
+    const serverQueue = queue.get(message.guild.id);
+
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to skip.");
     }
@@ -1271,10 +1284,11 @@ async function lyrics(message, serverQueue){
 /**
  * Change the volume of the bot.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns 
  */
-function volume(message, serverQueue){
+function volume(message){
+    const serverQueue = queue.get(message.guild.id);
+
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to change the volume.");
     }
@@ -1289,16 +1303,18 @@ function volume(message, serverQueue){
     }
     //serverQueue.volume = vol;
     serverQueue.resource.volume.setVolume(vol/100);
+    console.log(`Set volume for ${serverQueue.songs[0].title} to ${vol}`);
     return message.channel.send(`🔊 Volume has been set to \`${vol}%\` for \*\*${serverQueue.songs[0].title}\*\*`);
 }
 
 /**
  * Replays the last played song.
  * @param {Message} message A Discord message object.
- * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns 
  */
-function replay(message, serverQueue) {
+function replay(message) {
+    const serverQueue = queue.get(message.guild.id);
+
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to replay the song.");
     }
