@@ -1,16 +1,19 @@
 # PALACE BAY
-PALACE BAY is a simple music bot compatible with YouTube and SoundCloud built on [discord.js](https://discord.js.org). This bot is generally self-hosted or ran on a dedicated server such as a Raspberry Pi. The bot runs on [Node.js](https://nodejs.org/en) and uses the [play-dl](https://play-dl.github.io/index.html) library to function.
+PALACE BAY is a simple, text-based music bot compatible with YouTube and SoundCloud built on [discord.js](https://discord.js.org). This bot is generally self-hosted or ran on a dedicated server such as a Raspberry Pi. The bot runs on [Node.js](https://nodejs.org/en) and uses the [play-dl](https://play-dl.github.io/index.html) library to function.
 ## Features
-~~The music bot also responds to voice commands as well. Begin your voice command with 'music' followed by whichever command you want to invoke. Some commands may not be suited for voice commands, but you can try.~~ 
-<br>
-~~An example would be 'music play mood lil uzi' or 'music next'.~~ 
+The music bot also responds to voice commands as well. Edit your config.json to include your desired keyword to invoke the voice commands. Most commands should be compatible with voice but not all. 
 <br><br>
-Works but suffers from a memory leak so it is disabled for the time being. You can enable it at your own discretion by uncommenting https://github.com/anthonyn4/PalaceBot/blob/02d468aded3e0fc9820cbdf707cfdfb5d6d08432/main.js#L36 and https://github.com/anthonyn4/PalaceBot/blob/02d468aded3e0fc9820cbdf707cfdfb5d6d08432/main.js#L66-L78
+If you choose your keyword to be 'music', for example you would invoke the play command by saying 'music play mood lil uzi' or skip the song with 'music skip'. 
+<br><br>
+The bot does not record any voice or sound and only responds if you say your desired keyword. You can also opt not to install the speech recognition library/comment out the relevant code if you don't want to use the voice commands.
+<br><br>
+
 ### Commands
 <sub>[] brackets denote optional arguments</sub>
 | Commands | Description |
 | --- | --- |
 | `!help` `!commands` | Lists all commands. |
+| `!join` `!connect` | Summons the bot to your current voice channel. (using !play will automatically invoke this) |
 | `!play [-sc] [-pl/-al] query`| Searches for the specified query on YouTube. (You can search for playlists `-pl` or albums(SoundCloud only) `-al`  or search on SoundCloud `-sc`) |
 | `!play url/mp3` | Plays the requested url or mp3 in your current voice channel. (Supports playlists, radio, attachments, and Discord URLs as well)
 | `!skip` `!remove` `!next [keyword/position]` | Skip the current song. (or optionally, specify a keyword or position to remove a song from the queue) |
@@ -27,7 +30,6 @@ Works but suffers from a memory leak so it is disabled for the time being. You c
 | `!ff mm:ss` | Fast forward a specified amount in the current song. |
 | `!lyrics` | Displays lyrics for the current song. |
 | `!kick` `!leave` | Removes the bot from your voice channel. |
-<!-- | `!join/connect` | Summons the bot to your current voice channel. (using !play will automatically invoke this) | -->
 
 ## Installation
 - The bot currently runs on [discord.js v14](https://www.npmjs.com/package/discord.js) and [Node.js v18.12.1](https://nodejs.org/en) and depends on [play-dl](https://play-dl.github.io/index.html) to function.
