@@ -4,6 +4,7 @@
     Run and control the bot from a single embed
     Slash commands
     Find a way to auto-refresh youtube cookie/bypass age-restricted content
+    Separate functions into modules
 */
 const {splitText, parse} = require('./utils')
 //connection to discord
@@ -89,7 +90,6 @@ client.on(SpeechEvents.speech, voiceHandler);
 process.on('warning', e => console.warn(e.stack));
 
 
-//TODO: remove serverQueue argument from functions
 /**
  * Executes a command based on user input.
  * @param {Message} message A Discord message object.
@@ -956,7 +956,9 @@ function resume(message){
     return message.channel.send("❌ Something went wrong unpausing the bot.")
 }
 
-function stop(message, serverQueue) {   //same thing as clear i guess
+function stop(message) {   //same thing as clear i guess
+    const serverQueue = queue.get(message.guild.id);
+
     if(!message.member.voice.channel){
         return message.channel.send("❌ You have to be in a voice channel to stop the music.");
     }
