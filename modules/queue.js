@@ -305,5 +305,5 @@ function shuffle(message) {
 }
 
 module.exports = {
-    queue, addSong, skip, skipto, clear, loopSong, showQueue, shuffle
+    queue, addSong, skip, skipto, clear, stop, loopSong, showQueue, shuffle
 };

@@ -1,7 +1,7 @@
 const playDL = require('play-dl');
 const {parse} = require('./utils')
 const {connect} = require('./connect')
-const {queue} = require('./queue')
+const {queue, addSong} = require('./queue')
 const {play} = require('./song')
 /**
  * Processes user input to either search for a song or process a URL.

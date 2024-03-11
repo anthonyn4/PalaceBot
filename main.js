@@ -29,7 +29,7 @@ const { client } = require('./modules/client')
 const { splitText } = require('./modules/utils');
 const { connect } = require('./modules/connect');
 const { validateRequest } = require('./modules/validate');
-const { queue, skip, skipto, clear, loopSong, showQueue, shuffle } = require('./modules/queue');
+const { queue, skip, skipto, clear, stop, loopSong, showQueue, shuffle } = require('./modules/queue');
 const { pause, resume, replay, forward, volume} = require('./modules/song')
 
 addSpeechEvent(client, {profanityFilter: false});
@@ -66,7 +66,6 @@ const messageHandler = (message) => {
 }
 client.on(Events.MessageCreate, messageHandler);
 
-process.setMaxListeners(0); //not recommended but discord-voice-recognition has issues 
 const voiceHandler = (voice) => {
     if (!voice.content) {
         return; //if no speech detected, do nothing
@@ -81,7 +80,24 @@ const voiceHandler = (voice) => {
 }
 client.on(SpeechEvents.speech, voiceHandler);
 
+client.on('voiceStateUpdate', (oldState, newState) => {
+    let clientId = getVoiceConnection(oldState.guild.id)?.joinConfig.channelId
+    if(!queue.has(oldState.guild.id)) return;
+    client.channels.fetch(clientId)
+        .then((ch) => {
+            if (ch.members.size == 1) {
+                destroy(oldState.guild)
+                console.log(`No active members, bot has disconnected from ${oldState.guild.name}`)
+            }
+        }).catch((e) => {
+            console.error(`Some error in voiceStateUpdate has occurred. ${e}`)
+        })
+   //console.log(oldState.channel?.members.size)
+   //console.log(newState.channel?.members.size)
+});
+
 process.on('warning', e => console.warn(e.stack));
+process.setMaxListeners(0); //not recommended but discord-voice-recognition has issues 
 
 
 /**

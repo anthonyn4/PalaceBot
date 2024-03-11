@@ -57,7 +57,6 @@ async function connect(message, songs = []) {
                     },
                     }
                 );
-        
                 //check if bot is moving channels or forcibly disconnected
                 connection.once(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
                     try {
@@ -86,22 +85,23 @@ async function connect(message, songs = []) {
                 //     oldNetworking?.off('stateChange', networkStateChangeHandler);
                 //     newNetworking?.on('stateChange', networkStateChangeHandler);
                 //   });
-                if (getVoiceConnection(message.guild.id) != null) {
-                    const userCheck = setInterval(() => {
-                        // console.log(client.channels.fetch(getVoiceConnection(message.guild.id).packets.state.channel_id))
-                        client.channels.fetch(getVoiceConnection(message.guild.id)?.packets.state.channel_id)
-                            .then((ch) => {
-                                if (ch.members.size == 1) {
-                                    clearInterval(userCheck);
-                                    destroy(message.guild);
-                                    console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
-                                } 
-                            }).catch((e) => {
-                                clearInterval(userCheck);
-                                //console.error(e); //usually throws an error when the bot is forcibly disconnected but idk what to do about it
-                            });
-                    }, 10 * 1000);
-                } 
+
+                // if (getVoiceConnection(message.guild.id) != null) {
+                //     const userCheck = setInterval(() => {
+                //         // console.log(client.channels.fetch(getVoiceConnection(message.guild.id).packets.state.channel_id))
+                //         client.channels.fetch(getVoiceConnection(message.guild.id)?.packets.state.channel_id)
+                //             .then((ch) => {
+                //                 if (ch.members.size == 1) {
+                //                     clearInterval(userCheck);
+                //                     destroy(message.guild);
+                //                     console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
+                //                 } 
+                //             }).catch((e) => {
+                //                 clearInterval(userCheck);
+                //                 //console.error(e); //usually throws an error when the bot is forcibly disconnected but idk what to do about it
+                //             });
+                //     }, 10 * 1000);
+                // } 
                 console.log(`Connected to ${message.guild.name}`);
             } catch (err) {
                 console.log(err);
