@@ -1,3 +1,5 @@
+const {splitText} = require('./utils')
+
 const queue = new Map(); //map of guild ID and its respective queue
 
 function addSong(message, songs){
@@ -137,6 +139,7 @@ function clear(message){
     serverQueue.songs = [currentSong]; //remove all songs except for currently playing song
     serverQueue.loop = false;
     serverQueue.keep = false;
+    serverQueue.playRelated = false;
     //serverQueue.songs = [];     //empty the queue
     //serverQueue.player.stop();  //then skip current song by invoking AudioPlayer stop method
 

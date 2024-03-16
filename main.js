@@ -28,9 +28,8 @@ const { getLyrics } = require('genius-lyrics-api');
 const { client } = require('./modules/client')
 const { splitText } = require('./modules/utils');
 const { connect } = require('./modules/connect');
-const { validateRequest } = require('./modules/validate');
 const { queue, skip, skipto, clear, stop, loopSong, showQueue, shuffle } = require('./modules/queue');
-const { pause, resume, replay, forward, volume} = require('./modules/song')
+const { validateRequest, playRelated, seek, pause, resume, replay, forward, volume} = require('./modules/song')
 
 addSpeechEvent(client, {profanityFilter: false});
 
@@ -97,7 +96,7 @@ client.on('voiceStateUpdate', (oldState, newState) => {
 });
 
 process.on('warning', e => console.warn(e.stack));
-process.setMaxListeners(0); //not recommended but discord-voice-recognition has issues 
+require('events').EventEmitter.defaultMaxListeners = 100; //not recommended but discord-voice-recognition has issues 
 
 
 /**
@@ -123,6 +122,9 @@ function execute(message){
             break;
         case 'p': case 'play': case 'put on':
             validateRequest(message);
+            break;
+        case 'related':
+            playRelated(message);
             break;
         case 'next': case 'remove': case 'skip':
             skip(message);

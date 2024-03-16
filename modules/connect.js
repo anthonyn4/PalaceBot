@@ -1,6 +1,5 @@
 const {VoiceConnectionStatus, entersState, getVoiceConnection, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior} = require('@discordjs/voice');
 const {queue} = require('./queue')
-const {client} = require('./client')
 
 /**
  * Establishes a connection between a Discord voice channel and its associated queue.
@@ -27,6 +26,7 @@ async function connect(message, songs = []) {
                 //textChannel: message.channel,
                 connection: null,
                 lastPlayed: null, //last played song
+                playRelated: false, //if the bot should play related songs
                 paused: false,
                 songs: songs,
                 player: null,
@@ -86,22 +86,7 @@ async function connect(message, songs = []) {
                 //     newNetworking?.on('stateChange', networkStateChangeHandler);
                 //   });
 
-                // if (getVoiceConnection(message.guild.id) != null) {
-                //     const userCheck = setInterval(() => {
-                //         // console.log(client.channels.fetch(getVoiceConnection(message.guild.id).packets.state.channel_id))
-                //         client.channels.fetch(getVoiceConnection(message.guild.id)?.packets.state.channel_id)
-                //             .then((ch) => {
-                //                 if (ch.members.size == 1) {
-                //                     clearInterval(userCheck);
-                //                     destroy(message.guild);
-                //                     console.log(`No active users, bot has disconnected from "${message.guild.name}"`);
-                //                 } 
-                //             }).catch((e) => {
-                //                 clearInterval(userCheck);
-                //                 //console.error(e); //usually throws an error when the bot is forcibly disconnected but idk what to do about it
-                //             });
-                //     }, 10 * 1000);
-                // } 
+            
                 console.log(`Connected to ${message.guild.name}`);
             } catch (err) {
                 console.log(err);
