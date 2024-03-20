@@ -1,6 +1,8 @@
 const {verifyString} = require('discord.js');
 const axios = require('axios');
 const fs = require('fs');
+
+
 //add splitting at specified character
 // function splitText(text) {
 //     const maxLength = 1999;
@@ -53,6 +55,11 @@ const fs = require('fs');
 // }
 
 
+function getRandomInt(min, max) {
+  const minCeiled = Math.ceil(min);
+  const maxFloored = Math.floor(max);
+  return Math.floor(Math.random() * (maxFloored - minCeiled) + minCeiled); // The maximum is exclusive and the minimum is inclusive
+}
 
 //Discord's now deprecated splitMessage function (default maxLength is 2000)
 function splitText(text, { maxLength = 1990, char = '\n', prepend = '', append = '' } = {}) {
@@ -112,4 +119,4 @@ function splitText(text, { maxLength = 1990, char = '\n', prepend = '', append =
     }
 }
 
-module.exports = {splitText, parse};
+module.exports = {getRandomInt, splitText, parse};
