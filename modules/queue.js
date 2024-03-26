@@ -33,9 +33,6 @@ function skip(message){
 
     const args = message.content.split(" ");
 
-    if (!message.member.voice.channel) {
-        return message.channel.send("❌ You have to be in a voice channel to skip the song.");
-    }
     if (!serverQueue || serverQueue.songs.length == 0){
         return message.channel.send("❌ No songs to skip.");
     }
@@ -55,6 +52,9 @@ function skip(message){
         let request = message.content.substring(message.content.indexOf(' '), message.content.length).trim();
         if (args[1] == 'last' || args[1] == 'end') { //check certain keywords first
             pos = serverQueue.songs.length-1;
+        } else if (args[1] == 'all') {
+            stop(message);
+            return; 
         } else {   //otherwise find a match
             const regex = new RegExp(request, 'i'); //case insensitive regex
             pos = serverQueue.songs.findIndex(function (s) { //find position of a song title including keyword
@@ -89,9 +89,7 @@ function skipto(message){
     const args = message.content.split(" ");
     let pos = parseInt(args[1]);
     let song;
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to skip.");
-    }
+
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to skip to.");
     }
@@ -128,9 +126,6 @@ function skipto(message){
 function clear(message){
     const serverQueue = queue.get(message.guild.id);
 
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to clear the queue.");
-    }
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No queue to clear.");
     }
@@ -155,9 +150,6 @@ function clear(message){
 function stop(message) {   
     const serverQueue = queue.get(message.guild.id);
 
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to stop the music.");
-    }
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No music to stop.");
     }
@@ -179,9 +171,6 @@ function loopSong(message){
 
     const args = message.content.split(" ");
 
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to loop the song."); 
-    }
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to loop.");
     }
@@ -292,9 +281,6 @@ function showQueue(message){
 function shuffle(message) {
     const serverQueue = queue.get(message.guild.id);
 
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to stop the music.");
-    }
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No music to stop.");
     }

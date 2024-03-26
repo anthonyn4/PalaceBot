@@ -109,6 +109,14 @@ function execute(message){
     const args = message.content.slice(prefix.length).split(' ');
     //console.log(args);
     let command = args[0].toLowerCase();
+ 
+    if (command == 'help' || command == 'commands') {
+        help(message);
+    }
+
+    if(!message.member.voice.channel){
+        return message.channel.send("❌ You have to be in a voice channel to use commands.");
+    }
     if (command == 'run') {
         command = args.join(' ');
     } 
@@ -171,25 +179,39 @@ function execute(message){
         case 'die': case 'kill': case 'disconnect': case 'kick': case 'leave':
             kick(message);
             break;
-        case 'help': case 'commands':
-        //default:
-           // message.channel.send("You need to enter a valid command!");
-            help(message);
+        case 'reboot':
+            reboot(message);
             break;
+        // case 'help': case 'commands':
+        // //default:
+        //    // message.channel.send("You need to enter a valid command!");
+        //     help(message);
+        //     break;
     }
 }
 
+/**
+ * Restarts the bot. (The bot runs on a script that auto-starts when the bot stops running)
+ * @param {Message} message A Discord message object
+ * @returns 
+ */
+function reboot(message) {
+    const serverQueue = queue.get(message.guild.id);
+
+    if (!serverQueue) {
+        return message.channel.send("❌ No bot to restart.");
+    }
+    console.log(`Rebooting the bot!`)
+    process.exit(0); 
+}
 
 /**
- * Removes and cleans up the bot from the provided serverQueue
+ * Removes and cleans up the bot from the provided serverQueue.
  * @param {String} message A Discord message object.
  */
 function kick(message){    
     const serverQueue = queue.get(message.guild.id);
 
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to kick the bot");
-    }
     if (!serverQueue) {
         return message.channel.send("❌ No bot to kick.");
     }
@@ -207,6 +229,7 @@ function help(message){
     const commands = `
     !play -sc|-pl|-al query -- search for a song, playlist(-pl), or album(-al) on YouTube or SoundCloud(-sc)
     !play url -- plays a YouTube or SoundCloud URL 
+    !related -- plays songs related to the current or previous song (only YouTube songs)
 
     !pause -- pause the bot
     !resume -- resume the bot
@@ -216,13 +239,13 @@ function help(message){
 
     !skip number|word -- search for a song to skip/remove from the queue by number or word
     !skipto number|word -- search for a song to jump to in the queue by number or word
-    !queue n -- shows (up to n) songs in the queue 
+    !queue (n) -- shows (up to n) songs in the queue 
     !clear -- removes all songs in the queue  
 
     !shuffle -- shuffles the queue
     !loop -- repeats the queue 
     !seek mm:ss -- seek to a desired time in the current playing song
-    !ff mm:ss -- fast forward an certain amount of time in the current playing song (default is 30 seconds)
+    !ff mm:ss -- fast forward a desired amount of time in the current playing song (default is 30 seconds)
 
     !vol 0-500 -- change the volume from 0-500%
     !lyrics -- shows the lyrics of the current playing song 
@@ -241,9 +264,6 @@ function help(message){
 async function lyrics(message){
     const serverQueue = queue.get(message.guild.id);
 
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to skip.");
-    }
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to get lyrics for.");
     }

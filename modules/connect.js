@@ -1,4 +1,4 @@
-const {VoiceConnectionStatus, entersState, getVoiceConnection, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior} = require('@discordjs/voice');
+const {VoiceConnectionStatus, entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior} = require('@discordjs/voice');
 const {queue} = require('./queue')
 
 /**
@@ -11,11 +11,11 @@ const {queue} = require('./queue')
 async function connect(message, songs = []) {
     const serverQueue = queue.get(message.guild.id);
 
-    const voiceChannel = message.member.voice.channel;
-    if (!voiceChannel){
-        return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
-       //return message.channel.send("You need to be in a channel to play music.");
-    }
+    // const voiceChannel = message.member.voice.channel;
+    // if (!voiceChannel){
+    //     return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
+    //    //return message.channel.send("You need to be in a channel to play music.");
+    // }
     /*if no server queue exists, create one with the following parameters, 
      assign the current guild id to the serverqueue, 
      and push the requested song onto the array.
@@ -39,12 +39,11 @@ async function connect(message, songs = []) {
             };
         
             queue.set(message.guild.id, queueConstructor);
-            //queueConstructor.songs.push(song);
         
-            //attempt a connection with the user's voice channel, create the audio player and begin playing the first song
+            //attempt a connection with the user's voice channel, create the audio player
             try {
                 let connection = joinVoiceChannel({
-                    channelId: voiceChannel.id,
+                    channelId: message.member.voice.channel.id,
                     guildId: message.guild.id,
                     adapterCreator: message.guild.voiceAdapterCreator,
                     selfDeaf: false
@@ -71,22 +70,7 @@ async function connect(message, songs = []) {
                         connection.destroy();
                         queue.delete(message.guild.id);
                     }
-                });
-        
-                // connection.once('stateChange', (oldState, newState) => {
-                //     const oldNetworking = Reflect.get(oldState, 'networking');
-                //     const newNetworking = Reflect.get(newState, 'networking');
-                    
-                //     const networkStateChangeHandler = (oldNetworkState, newNetworkState) => {
-                //       const newUdp = Reflect.get(newNetworkState, 'udp');
-                //       clearInterval(newUdp?.keepAliveInterval);
-                //     }
-                    
-                //     oldNetworking?.off('stateChange', networkStateChangeHandler);
-                //     newNetworking?.on('stateChange', networkStateChangeHandler);
-                //   });
-
-            
+                });         
                 console.log(`Connected to ${message.guild.name}`);
             } catch (err) {
                 console.log(err);

@@ -4,11 +4,10 @@ const playDL = require('play-dl');
 const {connect} = require('./connect')
 const {queue, addSong} = require('./queue')
 const {parse, getRandomInt} = require('./utils');
-const { get } = require('http');
 
 
 /**
- * Processes user input to either search for a song or process a URL.
+ * Processes user input to either search for a song or a URL.
  * @param {Message} message A Discord message object.
  * @param {Object} serverQueue Contains information related to a Discord server's queue.
  * @returns {Message} A message to the channel based on the user input.
@@ -25,10 +24,10 @@ async function validateRequest(message) {
     const attachment = message.attachments?.first() ?? 0; //if attachment does not exist, assign 0 instead
     const voiceChannel = message.member.voice.channel;
     //const attachedUrl = message.attachments?.first()?.url ?? 0;
-    if (!voiceChannel){
-        return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
-       //return message.channel.send("You need to be in a channel to play music.");
-    }
+    // if (!voiceChannel){
+    //     return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
+    //    //return message.channel.send("You need to be in a channel to play music.");
+    // }
    
     if (!request && !attachment) {//someone invokes play command without any arguments
         return message.channel.send("❌ Specify a search, URL, or mp3 to play 🤓")
@@ -99,10 +98,10 @@ async function validateRequest(message) {
                         duration: search[0].durationInSec,
                         durationTime: parse(search[0].durationInSec),
                         seek: 0,    //amount of time to seek to in the song in seconds
-                        relatedSong: (await playDL.video_info(search[0].url)).related_videos[0],
-                        source: 'yt'
+                        relatedSong: 'youtube' in searchSource ? (await playDL.video_info(search[0].url)).related_videos[0] : null,
+                        source: 'youtube' in searchSource ? 'yt' : 'sc'
                     }
-                    //console.log(song.relatedSong);
+                    //console.log(song);
                     //console.log(song.url)
                     songs.push(song);
                 } else if (search[0].type == 'playlist') {
@@ -282,12 +281,12 @@ async function validateRequest(message) {
     connect(message,songs)
     .then( 
         () => { //on resolve (queue created)
-            play(message, message.guild, songs[0])
+            play(message, songs[0])
         },
         async () => { //on reject (queue exists)
             if (serverQueue.songs.length == 0) {   //if queue was empty, begin playing the first song 
                 serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue, needs to be done after the length is checked 
-                play(message, message.guild, serverQueue.songs[0]);
+                play(message, serverQueue.songs[0]);
             } else {
                 if (serverQueue.paused) {
                     //message.channel.send(`The bot is paused. Unpausing now...`).then(msg => setTimeout(() => msg.delete(), 2_000));
@@ -307,6 +306,7 @@ async function validateRequest(message) {
                     //                 //message.reply('Shutting down...');
                     //                 //client.destroy();
                                     serverQueue.songs.splice(1,0,songs[0]);      //make it the next song
+                                    resume(message);
                                     serverQueue.player.stop();                  //skip current playing song 
                     //         } else {
                     //             message.channel.send(`Unpausing now...`).then(msg => setTimeout(() => msg.delete(), 1_000));
@@ -361,12 +361,11 @@ async function validateRequest(message) {
 /**
  * Plays a song.
  * @param {Message} message A Discord message object.
- * @param {Guild} guild A Discord guild object.
  * @param {Object} song Contains information about a song.
  * @returns {Message} A message to the channel on the state of the song (playing, searching)
  */
-async function play(message, guild, song){
-    const serverQueue = queue.get(guild.id);
+async function play(message, song){
+    const serverQueue = queue.get(message.guild.id);
 
      if (!song) { 
     //     serverQueue.timeoutID = setTimeout(() => {  //separate timeout for each server
@@ -385,7 +384,7 @@ async function play(message, guild, song){
     //         serverQueue.loop = false;   //if there is no song to be played, disable the loop, no point looping an empty queue
     //         console.log('Disabled the loop.');
     //     }
-        if (serverQueue.playRelated && serverQueue.lastPlayed) {
+        if (serverQueue.playRelated && serverQueue.lastPlayed?.relatedSong) {
             message.content = serverQueue.lastPlayed.relatedSong;
             validateRequest(message);
         }
@@ -441,28 +440,28 @@ async function play(message, guild, song){
         if (serverQueue.loop && serverQueue.keep) {    //the loop is on and the song is flagged to be kept
             serverQueue.songs.push(serverQueue.songs.shift());  
         } else {
-            //pop song off the array (essentially placing the next song at the top)
+            //pop song off the array (placing the next song at the top)
             serverQueue.songs.shift();  
             if (serverQueue.loop === true){
                 serverQueue.keep = true;    //reset keep flag after skipping in a loop
             }
         }
-        play(message, guild, serverQueue.songs[0]);
+        play(message, serverQueue.songs[0]);
     })
 
     if (serverQueue.loop == true) {
         // don't print anything
     } else {
         if (song.source == 'discord'){
-            console.log(`Playing ${song.title} in "${guild.name}"`)
+            console.log(`Playing ${song.title} in "${message.guild.name}"`)
             message.channel.send(`🎶 Now playing \*\*${song.title}\*\* 🎵`) //starting at \`${song.seekTime.minutes}:${song.seekTime.seconds}\` 🎵`); 
                 //.then(msg => setTimeout(() => msg.delete(), (song.duration-song.seek)*1000));
         } else if (song.seek > 0) {
             let seekTime = parse(song.seek)
-            console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${guild.name}" starting at {${seekTime.minutes}:${seekTime.seconds}}`);
-            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at {${seekTime.minutes}:${seekTime.seconds}} 🎵`);
+            console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${message.guild.name}" starting at \`${seekTime.minutes}:${seekTime.seconds}\``);
+            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${seekTime.minutes}:${seekTime.seconds}\` 🎵`);
         } else {
-            console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${guild.name}"`) //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
+            console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${message.guild.name}"`) //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
             message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
                 //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         }
@@ -477,15 +476,11 @@ async function play(message, guild, song){
  */
 function playRelated(message){
     const serverQueue = queue.get(message.guild.id);
-
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to use this command.");
-    }
     if(!serverQueue || !serverQueue.lastPlayed) {
         return message.channel.send("❌ No data to find related songs. (Play a song first)");
     }
-    if(serverQueue.lastPlayed.source != 'yt') {
-        return message.channel.send("❌ Must be from YouTube to play related songs.");
+    if(serverQueue.lastPlayed.source !== 'yt') {
+        return message.channel.send("❌ Song must be from YouTube to play related songs.");
     }
     serverQueue.playRelated = !serverQueue.playRelated
     if(serverQueue.playRelated) {
@@ -494,7 +489,7 @@ function playRelated(message){
             validateRequest(message);
         }
         console.log(`Playing songs related to ${serverQueue.lastPlayed.title}`)
-        return message.channel.send(`✅ Now playing songs related to \*\*${serverQueue.lastPlayed.title}\*\*`)
+        return message.channel.send(`🎶 Now playing songs related to \*\*${serverQueue.lastPlayed.title}\*\*`)
     } else {
         return message.channel.send(`No longer playing related songs.`)
     }
@@ -510,9 +505,6 @@ function playRelated(message){
 function pause(message){
     const serverQueue = queue.get(message.guild.id);
 
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to pause the song.");
-    }
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to pause.");
     }
@@ -532,9 +524,6 @@ function pause(message){
 function resume(message){
     const serverQueue = queue.get(message.guild.id);
 
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to resume the song.");
-    }
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to resume.");
     }
@@ -555,15 +544,12 @@ function resume(message){
 function replay(message) {
     const serverQueue = queue.get(message.guild.id);
 
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to replay the song.");
-    }
     if (!serverQueue || !serverQueue.lastPlayed) {
         return message.channel.send("❌ No song to replay. (Play a song before trying to replay it)");
     }
     //console.log(`lastPlayed: ${serverQueue.lastPlayed.title}`);
     serverQueue.songs.splice(1,0,serverQueue.lastPlayed);
-    play(message,message.guild,serverQueue.songs[0]);
+    play(message,serverQueue.songs[0]);
 }
 
 
@@ -578,9 +564,6 @@ function seek(message, time = -1) {
 
     //console.log(`time: ${time}`)
     const args = message.content.split(" ");
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to seek.");
-    }
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to seek.");
     }
@@ -614,9 +597,8 @@ function seek(message, time = -1) {
     // }
     let currentSong = serverQueue.songs[0];
     currentSong.seek = timeToSeek || time; //used to seek in the song
-    //console.log(`seek: ${currentSong.seek}`);
     currentSong.seekTime = seekTime || parse(time); //used to display the time in mm:ss
-    console.log(`Seeked to ${currentSong.seekTime} in ${currentSong.title}`);
+    console.log(`Seeked to ${currentSong.seekTime.minutes}:${currentSong.seekTime.seconds} in ${currentSong.title}`);
 
     serverQueue.songs.unshift(currentSong);
     serverQueue.player.stop();
@@ -631,9 +613,6 @@ function forward(message){
     const serverQueue = queue.get(message.guild.id);
 
     const args = message.content.split(" ");
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to seek.");
-    }
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to forward.");
     }
@@ -669,9 +648,6 @@ function forward(message){
 function volume(message){
     const serverQueue = queue.get(message.guild.id);
 
-    if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to change the volume.");
-    }
     if (!serverQueue) {
         return message.channel.send("❌ Play a song to change its volume.");
     }
