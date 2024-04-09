@@ -267,25 +267,23 @@ async function validateRequest(message) {
             }
         }
  
-    //console.log(song);
-    // if(song.source === 'yt'){
-    //     let maxDuration = song.duration;
-    //     if (timeToSeek > maxDuration){ 
-    //         //console.log(maxDuration)
-    //         let maxTime = parse(maxDuration);
-    //         console.log(`Seek exceeded song limits, requested ${timeToSeek}, max is ${maxDuration}`);
-    //         return message.channel.send(`❌ Seeking beyond limits. <0-${maxTime.minutes}:${maxTime.seconds}>`);
-    //     }
-    // }
-    //console.log(serverQueue);
-    connect(message,songs)
-    .then( 
-        () => { //on resolve (queue created)
-            play(message, songs[0])
-        },
-        async () => { //on reject (queue exists)
-            if (serverQueue.songs.length == 0) {   //if queue was empty, begin playing the first song 
-                serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue, needs to be done after the length is checked 
+        //console.log(song);
+        // if(song.source === 'yt'){
+        //     let maxDuration = song.duration;
+        //     if (timeToSeek > maxDuration){ 
+        //         //console.log(maxDuration)
+        //         let maxTime = parse(maxDuration);
+        //         console.log(`Seek exceeded song limits, requested ${timeToSeek}, max is ${maxDuration}`);
+        //         return message.channel.send(`❌ Seeking beyond limits. <0-${maxTime.minutes}:${maxTime.seconds}>`);
+        //     }
+        // }
+        //console.log(serverQueue);
+        if (!serverQueue) {
+            connect(message, songs);
+            play(message, songs[0]);
+        } else {
+            if (serverQueue.songs.length == 0) {   //if queue already exists but is empty
+                serverQueue.songs = serverQueue.songs.concat(songs);    //append the new songs to the end of the queue, done after the length is checked 
                 play(message, serverQueue.songs[0]);
             } else {
                 if (serverQueue.paused) {
@@ -310,7 +308,6 @@ async function validateRequest(message) {
                                     serverQueue.player.stop();                  //skip current playing song 
                     //         } else {
                     //             message.channel.send(`Unpausing now...`).then(msg => setTimeout(() => msg.delete(), 1_000));
-                    //             //TODO: fix the repetition
                     //             addSong(message,songs)
                     //         } 
                     //         setTimeout(() => resume(message,serverQueue), 1_000);
@@ -320,10 +317,10 @@ async function validateRequest(message) {
                     //     pauseMsg.delete();
                     // });
                 } else {
-                  addSong(message,songs)
+                    addSong(message,songs)
                 }
-            } 
-         })
+            }
+        }
     } catch (e) {
         console.error(e);
         return message.channel.send(`\`Error: ${e.message}\``);    
@@ -421,8 +418,10 @@ async function play(message, song){
        serverQueue.songs.shift();
        return message.channel.send(`\`Error: ${e.message}\``);
     }
-    
+
+    //Sets the volume relative to the input stream - i.e. 1 is normal, 0.5 is half, 2 is double.
     serverQueue.resource.volume.setVolume(serverQueue.volume/100);
+
     serverQueue.connection.subscribe(serverQueue.player);
     serverQueue.player.play(serverQueue.resource);
     serverQueue.lastPlayed = song;
@@ -459,13 +458,13 @@ async function play(message, song){
         } else if (song.seek > 0) {
             let seekTime = parse(song.seek)
             console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${message.guild.name}" starting at \`${seekTime.minutes}:${seekTime.seconds}\``);
-            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${seekTime.minutes}:${seekTime.seconds}\` 🎵`);
+            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` starting at \`${seekTime.minutes}:${seekTime.seconds}\` 🎵`)
+            //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         } else {
             console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${message.guild.name}"`) //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
-            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`);
-                //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
+            message.channel.send(`🎶 Now playing \*\*${song.title}\*\* \`${song.durationTime.minutes}:${song.durationTime.seconds}\` 🎵`)
+            //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         }
-        //showQueue(serverQueue);
     }
 }
 
@@ -489,7 +488,7 @@ function playRelated(message){
             validateRequest(message);
         }
         console.log(`Playing songs related to ${serverQueue.lastPlayed.title}`)
-        return message.channel.send(`🎶 Now playing songs related to \*\*${serverQueue.lastPlayed.title}\*\*`)
+        return message.channel.send(`💿 Now playing songs related to \*\*${serverQueue.lastPlayed.title}\*\* 💿` )
     } else {
         return message.channel.send(`No longer playing related songs.`)
     }
