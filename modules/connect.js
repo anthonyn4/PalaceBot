@@ -9,7 +9,6 @@ const {queue} = require('./queue')
  * @returns {Promise}
  */
 async function connect(message, songs = []) {
-
     /*create object storing information for the music bot that we will call the server queue, 
      assign the current guild id to the server queue.
     */
@@ -17,8 +16,7 @@ async function connect(message, songs = []) {
         //textChannel: message.channel,
         connection: null,
         lastPlayed: null, //last played song
-        playRelated: false, //if the bot should play related songs
-        paused: false,
+        autoplay: false, //if the bot should play related songs
         songs: songs,
         player: null,
         resource: null,
