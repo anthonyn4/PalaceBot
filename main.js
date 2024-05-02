@@ -1,13 +1,9 @@
 /*
     Features to add:
-    Autoplay related songs
     Run and control the bot from a single embed
     Slash commands
     Find a way to auto-refresh youtube cookie/bypass age-restricted content
-    Separate functions into modules
 */
-//connection to discord
-//const Discord = require('discord.js');
 
 const {Events, Message, Guild} = require('discord.js');
 const {getVoiceConnection} = require('@discordjs/voice');
@@ -20,16 +16,12 @@ const {
 } = require('./config.json');
 
 
-//instance of the bot
-
 const { addSpeechEvent, SpeechEvents } = require("discord-speech-recognition");
 const playDL = require('play-dl');
-const { getLyrics } = require('genius-lyrics-api');
 const { client } = require('./modules/client')
-const { splitText } = require('./modules/utils');
 const { connect } = require('./modules/connect');
 const { queue, skip, skipto, clear, stop, loopSong, showQueue, shuffle } = require('./modules/queue');
-const { validateRequest, playRelated, seek, pause, resume, replay, forward, volume} = require('./modules/song')
+const { validateRequest, autoplay, seek, forward, pause, resume, replay, volume, lyrics} = require('./modules/song')
 
 addSpeechEvent(client, {profanityFilter: false});
 
@@ -115,7 +107,8 @@ function execute(message){
     }
 
     if(!message.member.voice.channel){
-        return message.channel.send("❌ You have to be in a voice channel to use commands.");
+        //return message.channel.send("❌ You have to be in a voice channel to use commands.");
+        return;
     }
     if (command == 'run') {
         command = args.join(' ');
@@ -131,8 +124,8 @@ function execute(message){
         case 'p': case 'play': case 'put on':
             validateRequest(message);
             break;
-        case 'related':
-            playRelated(message);
+        case 'autoplay':
+            autoplay(message);
             break;
         case 'next': case 'remove': case 'skip':
             skip(message);
@@ -171,7 +164,7 @@ function execute(message){
             forward(message);
             break;
         case 'lyrics':
-            lyrics(message);
+            lyrics(message, geniusApiKey);
             break;
         case 'shut': case 'stop':    
             stop(message);
@@ -255,47 +248,6 @@ function help(message){
     message.channel.send('```' + commands + '```');//.then(msg => setTimeout(() => msg.delete(), 30*1000));
 }
 
-
-/**
- * Displays lyrics for the current playing song.
- * @param {Message} message A Discord message object.
- * @returns 
- */
-async function lyrics(message){
-    const serverQueue = queue.get(message.guild.id);
-
-    if (!serverQueue || serverQueue.songs.length == 0) {
-        return message.channel.send("❌ No song to get lyrics for.");
-    }
-    const {title, duration, artist} = serverQueue.songs[0];
-    const options = {
-        apiKey: geniusApiKey,
-        title: title,
-        artist: ' ',
-        optimizeQuery: true
-    };
-    console.log(`Finding lyrics for ${options.title}`);
-    const searchMsg = await message.channel.send(`Finding lyrics for \*\*${title}\*\* 🔎`);
-    getLyrics(options)
-            .then((lyrics) => { 
-                let song = serverQueue.songs[0];
-                searchMsg.delete();
-                if (!lyrics) { 
-                    console.log(`No lyrics found.`);
-                    return message.channel.send(`❌ No lyrics found for \*\*${title}\*\*`)
-                }
-                console.log(`Found lyrics for ${serverQueue.songs[0].title}.`);
-                let strings = splitText(lyrics);
-                let startTime = song.seek ?? 0;
-                let currentTime = song.duration - Math.floor((serverQueue.resource.playbackDuration + (startTime*1000))/1000); //calculate remaining time in the song
-                //console.log(currentTime)
-                for (string of strings) {
-                    message.channel.send(string).then(string => setTimeout(() => string.delete(), currentTime*1000));
-                }
-                //return message.channel.send(lyrics)
-            })
-            .catch((e) => console.error(e));
-}
 
 
 
