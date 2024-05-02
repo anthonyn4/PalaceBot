@@ -1,4 +1,5 @@
-const {splitText} = require('./utils')
+const {splitText, parse} = require('./utils')
+const { AudioPlayerStatus } = require('@discordjs/voice');
 
 const queue = new Map(); //map of guild ID and its respective queue
 
@@ -17,8 +18,9 @@ function addSong(message, songs){
             console.log(`Added ${songs[0].title} to the queue.`);
             return message.channel.send(`\*\*${songs[0].title}\*\* has been added to the queue.`);
         } else {
-            console.log(`Added ${songs[0].title} to the queue. {${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}}`);
-            return message.channel.send(`\*\*${songs[0].title}\*\* \`${songs[0].durationTime.minutes}:${songs[0].durationTime.seconds}\` has been added to the queue. `);
+            let durationTime = parse(songs[0].duration)
+            console.log(`Added ${songs[0].title} to the queue. {${durationTime.minutes}:${durationTime.seconds}}`);
+            return message.channel.send(`\*\*${songs[0].title}\*\* \`${durationTime.minutes}:${durationTime.seconds}\` has been added to the queue. `);
         }
     } 
 }
@@ -36,17 +38,20 @@ function skip(message){
     if (!serverQueue || serverQueue.songs.length == 0){
         return message.channel.send("❌ No songs to skip.");
     }
-    if (serverQueue.paused) {
-        resume(message);
-    }
-    if (args.length == 1){
-        serverQueue.keep = false; //don't keep skipped song in the queue
-        serverQueue.player.stop();     //AudioPlayer stop method to skip to next song
-        console.log(`Skipped ${serverQueue.songs[0].title}.`);
-        return message.channel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\*.`);
-            //.then(msg => setTimeout(() => msg.delete(), 30 * 1000)); //delete after 30 seconds
-    }
     let pos = parseInt(args[1]); //check if position is an integer
+    let currentSong = serverQueue.songs[0];
+    if (serverQueue.player.state.status == AudioPlayerStatus.Paused) {
+        return message.channel.send(`The bot is paused. Resume playing with \`\`!resume\`\` in order to skip \*\*${currentSong.title}\*\*.`)
+    }
+    if (args.length == 1 || pos == 0){
+        serverQueue.keep = false; //don't keep skipped song in the queue
+        if (serverQueue.player.stop()) {
+            console.log(`Skipped ${currentSong.title}.`);
+            return message.channel.send(`⏩ Skipped \*\*${currentSong.title}\*\*.`);
+                //.then(msg => setTimeout(() => msg.delete(), 30 * 1000)); //delete after 30 seconds
+        }     
+        return message.channel.send(`❌ Something went wrong skipping \*\*${serverQueue.songs[0].title}\*\*.`)
+    }
     //TODO: make into function
     if (isNaN(pos)) { //skip by keyword 
         let request = message.content.substring(message.content.indexOf(' '), message.content.length).trim();
@@ -61,17 +66,11 @@ function skip(message){
                 return regex.test(s.title); 
             });
         }
-        if (pos < 0) {
+        if (pos < 0) { //if regex fails to find a match
             return message.channel.send(`❌ No song in queue with keyword \`${request}\`.`);
         } 
-    } else if (pos > serverQueue.songs.length-1 || pos < 0) { 
+    } else if (pos > serverQueue.songs.length-1 || pos < 0) {  //if position number was out of bounds
         return message.channel.send(`❌ Skip position out of bounds. There are \*\*${serverQueue.songs.length-1}\*\* songs in the queue.`)   //return statement to avoid skipping
-    } 
-    if (pos == 0) { //removing the current playing song results in a skip
-        serverQueue.keep = false; //don't keep skipped song in the queue
-        serverQueue.player.stop();
-        console.log(`Skipped ${serverQueue.songs[0].title}.`);
-        return message.channel.send(`⏩ Skipped \*\*${serverQueue.songs[0].title}\*\*.`);
     } 
     console.log(`Removed ${serverQueue.songs[pos].title} from the queue.`);
     message.channel.send(`Removed \*\*${serverQueue.songs[pos].title}\*\* from the queue.`);//.then(msg => setTimeout(() => msg.delete(), 30*1000));    
@@ -134,7 +133,7 @@ function clear(message){
     serverQueue.songs = [currentSong]; //remove all songs except for currently playing song
     serverQueue.loop = false;
     serverQueue.keep = false;
-    serverQueue.playRelated = false;
+    serverQueue.autoplay = false;
     //serverQueue.songs = [];     //empty the queue
     //serverQueue.player.stop();  //then skip current song by invoking AudioPlayer stop method
 
@@ -154,9 +153,6 @@ function stop(message) {
         return message.channel.send("❌ No music to stop.");
     }
     //console.log(`Stopped the bot.`);
-    //getVoiceConnection(message.guild.id).disconnect();
-    //getVoiceConnection(message.guild.id).destroy();
-    //queue.delete(message.guild.id);
     clear(message);
     serverQueue.player.stop();
 }
@@ -174,6 +170,11 @@ function loopSong(message){
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to loop.");
     }
+    if (args.length > 1 && args.includes('off')) {
+        serverQueue.loop = false;
+        console.log(`Turned off looping.`);
+        return message.channel.send('📴Loop **DEACTIVATED**😥');
+    }
     //if only !loop is checkd with no parameter
     //if (args.length == 1){
         //console.log(`Loop parameter not specified. Loop not executed.`);
@@ -182,13 +183,14 @@ function loopSong(message){
         serverQueue.keep = !serverQueue.keep;    //and keep the current song 
         if (serverQueue.loop){
             console.log(`Looping the queue.`);
-            return message.channel.send('⚡ Loop **ACTIVATED** 🌩️ (type !loop again to deactivate)');
+            return message.channel.send('⚡ Loop **ACTIVATED** 🌩️');
         } else {
             console.log('Disabled the loop.');
             return message.channel.send('📴 Loop **DEACTIVATED** 😥');
         }
         //return message.channel.send('Looping the queue.');
    // }
+
 
     /*
     let check = args[1].toLowerCase();
