@@ -13,6 +13,7 @@
     "@discordjs/voice": "^0.16.1",
     "discord-speech-recognition": "^3.4.1",
     "discord.js": "^14.12.1",
+    "dotenv": "^16.4.5",
     "ffmpeg-static": "^5.2.0",
     "genius-lyrics-api": "^3.2.0",
     "libsodium-wrappers": "^0.7.13",
