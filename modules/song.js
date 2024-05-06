@@ -22,15 +22,8 @@ async function validateRequest(message) {
     //let timeToSeek = parse(args[args.length-1]);
 
     let request = message.content; //no trim or arguments will stop working due to regex needing whitespace
-    //console.log(request);
-
     const attachment = message.attachments?.first() ?? 0; //if attachment does not exist, assign 0 instead
-    const voiceChannel = message.member.voice.channel;
     //const attachedUrl = message.attachments?.first()?.url ?? 0;
-    // if (!voiceChannel){
-    //     return (Math.round(Math.random())) ? message.channel.send("❌ You need to be in a channel to play music.") : message.channel.send("how bout u hop in a voice channel first❓");
-    //    //return message.channel.send("You need to be in a channel to play music.");
-    // }
 
     if (!request && !attachment) {//someone invokes play command without any arguments
         return message.channel.send("❌ Specify a search, URL, or mp3 to play 🤓")
@@ -350,22 +343,22 @@ async function play(message, song) {
         play(message, serverQueue.songs[0]);
     })
 
+    let durationTime = parse(song.duration)
     if (serverQueue.loop || serverQueue.autoplay) {
-        console.log(`Playing ${song.title} {${song.durationTime.minutes}:${song.durationTime.seconds}} in "${message.guild.name}"`)
+        console.log(`Playing ${song.title} {${durationTime.minutes}:${durationTime.seconds}} in "${message.guild.name}"`)
         // don't print anything
     } else {
-        let durationTime = parse(song.duration)
         if (song.source == 'discord') {
             console.log(`Playing ${song.title} in "${message.guild.name}"`)
             message.channel.send(`🎶 Now playing \*\*${song.title}\*\* 🎵`);
         } else if (song.seek > 0) {
             let seekTime = parse(song.seek)
             console.log(`Playing ${song.title} {${durationTime.minutes}:${durationTime.seconds}} in "${message.guild.name}" starting at {${seekTime.minutes}:${seekTime.seconds}}`);
-            message.channel.send(`🎶 Now playing [${song.title}](<${song.url}>) \`${durationTime.minutes}:${durationTime.seconds}\` starting at \`${seekTime.minutes}:${seekTime.seconds}\` 🎵`)
+            message.channel.send(`🎶 Now playing \*\*[${song.title}](<${song.url}>)\*\* \`${durationTime.minutes}:${durationTime.seconds}\` starting at \`${seekTime.minutes}:${seekTime.seconds}\` 🎵`)
             //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         } else {
             console.log(`Playing ${song.title} {${durationTime.minutes}:${durationTime.seconds}} in "${message.guild.name}"`) //starting at {${song.seekTime.minutes}:${song.seekTime.seconds}}`);
-            message.channel.send(`🎶 Now playing [${song.title}](<${song.url}>) \`${durationTime.minutes}:${durationTime.seconds}\` 🎵`)
+            message.channel.send(`🎶 Now playing \*\*[${song.title}](<${song.url}>)\*\* \`${durationTime.minutes}:${durationTime.seconds}\` 🎵`)
             //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         }
     }
