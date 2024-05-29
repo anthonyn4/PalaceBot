@@ -45,7 +45,10 @@ function skip(message){
     }
     if (args.length == 1 || pos == 0){
         serverQueue.keep = false; //don't keep skipped song in the queue
+        //console.log(`before skip: ${serverQueue.player.state.status}`)
+
         if (serverQueue.player.stop()) {
+            //console.log(`after skip: ${serverQueue.player.state.status}`)
             console.log(`Skipped ${currentSong.title}.`);
             return message.channel.send(`⏩ Skipped \*\*${currentSong.title}\*\*.`);
                 //.then(msg => setTimeout(() => msg.delete(), 30 * 1000)); //delete after 30 seconds
@@ -129,13 +132,13 @@ function clear(message){
         return message.channel.send("❌ No queue to clear.");
     }
 
-    let currentSong = serverQueue.songs[0];
-    serverQueue.songs = [currentSong]; //remove all songs except for currently playing song
+    //let currentSong = serverQueue.songs[0];
+    //serverQueue.songs = [currentSong]; //remove all songs except for currently playing song
     serverQueue.loop = false;
     serverQueue.keep = false;
     serverQueue.autoplay = false;
-    //serverQueue.songs = [];     //empty the queue
-    //serverQueue.player.stop();  //then skip current song by invoking AudioPlayer stop method
+    serverQueue.songs = [];     //empty the queue
+    serverQueue.player.stop();  //then skip current song by invoking AudioPlayer stop method
 
     console.log(`Cleared queue.`);
     return message.channel.send("🧹 Cleared queue. ");
@@ -146,16 +149,17 @@ function clear(message){
  * @param {Message} message A Discord message object.
  * @returns 
  */
-function stop(message) {   
-    const serverQueue = queue.get(message.guild.id);
+// function stop(message) {   
+//     const serverQueue = queue.get(message.guild.id);
 
-    if (!serverQueue || serverQueue.songs.length == 0) {
-        return message.channel.send("❌ No music to stop.");
-    }
-    //console.log(`Stopped the bot.`);
-    clear(message);
-    serverQueue.player.stop();
-}
+//     if (!serverQueue || serverQueue.songs.length == 0) {
+//         return message.channel.send("❌ No music to stop.");
+//     }
+//     //console.log(`Stopped the bot.`);
+//     clear(message);
+//     serverQueue.songs = []; //remove all songs 
+//     serverQueue.player.stop();
+// }
 
 /**
  * Loops the queue.
@@ -170,19 +174,26 @@ function loopSong(message){
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to loop.");
     }
-    if (args.length > 1 && args.includes('off')) {
-        serverQueue.loop = false;
-        console.log(`Turned off looping.`);
-        return message.channel.send('📴Loop **DEACTIVATED**😥');
+    if (args.length > 1) {
+        if (args.includes('off')) {
+            serverQueue.loop = false;
+            console.log(`Turned off looping.`);
+            return message.channel.send('📴Loop **DEACTIVATED**😥');
+        } 
+        if (args.includes('on')) {
+            serverQueue.loop = true;
+            console.log(`Turned on looping.`);
+            return message.channel.send('⚡ Loop **ACTIVATED** 🌩️');
+        }
     }
     //if only !loop is checkd with no parameter
     //if (args.length == 1){
         //console.log(`Loop parameter not specified. Loop not executed.`);
         //return message.channel.send(`Specify the loop parameter. (!loop <this/all/off>`);
         serverQueue.loop = !serverQueue.loop;    //loop the queue
-        serverQueue.keep = !serverQueue.keep;    //and keep the current song 
+       // serverQueue.keep = !serverQueue.keep;    //and keep the current song 
         if (serverQueue.loop){
-            console.log(`Looping the queue.`);
+            console.log(`Enabled the loop.`);
             return message.channel.send('⚡ Loop **ACTIVATED** 🌩️');
         } else {
             console.log('Disabled the loop.');
@@ -296,5 +307,5 @@ function shuffle(message) {
 }
 
 module.exports = {
-    queue, addSong, skip, skipto, clear, stop, loopSong, showQueue, shuffle
+    queue, addSong, skip, skipto, clear, loopSong, showQueue, shuffle
 };
