@@ -17,7 +17,7 @@ const { parse, getRandomInt, splitText } = require('./utils');
  */
 async function validateRequest(message) {
     const serverQueue = queue.get(message.guild.id);
-
+    const status = serverQueue?.player.state.status; 
     //check the last argument to see if it is a valid time to seek to
     //let timeToSeek = parse(args[args.length-1]);
 
@@ -26,6 +26,9 @@ async function validateRequest(message) {
     //const attachedUrl = message.attachments?.first()?.url ?? 0;
 
     if (!request && !attachment) {//someone invokes play command without any arguments
+        if (status === AudioPlayerStatus.Paused) {
+            return resume(message);
+        }
         return message.channel.send("❌ Specify a search, URL, or mp3 to play 🤓")
     }
 
@@ -132,7 +135,7 @@ async function validateRequest(message) {
         }
 
         //if the queue is not empty, and the bot is not paused
-        if (serverQueue.player.state.status != AudioPlayerStatus.Paused) {
+        if (status !== AudioPlayerStatus.Paused) {
             addSong(message, songs)
             return;
         }
@@ -144,7 +147,7 @@ async function validateRequest(message) {
             serverQueue.player.stop();
             return;
         }
-        
+
         if (process.env.ENABLE_PAUSE_PROMPT) {
             //otherwise prompt the user if they want to resume their current song, or replace it
             const pauseMsg = await message.channel.send(`The bot is paused. The current song is \`\`${serverQueue.songs[0].title}\`\`.\n\*\*Do you want to play \`\`${songs[0].title}\`\` instead?\*\*`);
@@ -256,13 +259,12 @@ async function play(message, song) {
         if (serverQueue.loop && serverQueue.keep) {    //the loop is on and the song is flagged to be kept
             serverQueue.songs.push(serverQueue.songs.shift());
         } else {
-            //pop song off the array (placing the next song at the top)
-            serverQueue.songs.shift();
+            serverQueue.songs.shift(); //remove first song
             if (serverQueue.loop === true) {
                 serverQueue.keep = true;    //reset keep flag after skipping in a loop
             }
         }
-        play(message, song);
+        play(message, serverQueue.songs[0]); //play the next song in the queue
     })
 
     printPlayMessage(message, song);
