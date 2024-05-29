@@ -1,6 +1,6 @@
 require('dotenv').config()
 
-const { createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
+const { createAudioResource, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
 const playDL = require('play-dl');
 const { getLyrics } = require('genius-lyrics-api');
 
@@ -35,9 +35,8 @@ async function validateRequest(message) {
         let songs = []; //array of song objects
         //let check = await playDL.validate(args[1].trim());
         let check = await playDL.validate(request);
-        let searchSource = { youtube: 'video' };  //where we want to perform the search and what type of result
+        let searchSource = { soundcloud: 'tracks' };  //where we want to perform the search and what type of result (YOUTUBE STOPPED WORKING FOR SOME REASON)
         let searchMsg = '';
-        //console.log(check)  //debug
         if (check === false) {
             song = {
                 title: attachment.name, //?? args[1].slice(args[1].lastIndexOf('/')+1),
@@ -75,8 +74,6 @@ async function validateRequest(message) {
                 source: searchSource
             })
             searchMsg.delete();
-            //console.log(search)
-            //console.log(searchSource);
             if (search.length == 0) {
                 return message.channel.send(`❌ No results found for  '${request}'  😢`);
             } else {
@@ -88,8 +85,6 @@ async function validateRequest(message) {
                         seek: 0,    //amount of time to seek to in the song in seconds
                         source: 'youtube' in searchSource ? 'yt' : 'sc'
                     }
-                    //console.log(song);
-                    //console.log(song.url)
                     songs.push(song);
                 } else if (search[0].type == 'playlist') {
                     message.content = search[0].url;
@@ -98,101 +93,23 @@ async function validateRequest(message) {
                     console.log(search[0]);
                     return console.error("Failed to find a valid search.");
                 }
-
             }
         } else {
             let [source, type] = check.split("_");
-            //console.log(type);  //debug
-            if (source === 'yt') {
-                if (type === 'video') {
-                    const video = await playDL.video_info(request);
-                    song = {
-                        title: video.video_details.title,
-                        url: video.video_details.url,
-                        duration: video.video_details.durationInSec,
-                        seek: 0,
-                        source: 'yt'
-                    }
-                    songs.push(song)
-                } else if (type === 'playlist') {
-                    const playlist = await playDL.playlist_info(request, { incomplete: true }) //parse youtube playlist ignoring hidden videos
-                    const videos = await playlist.all_videos()
-                    console.log(`Fetched ${playlist.total_videos} videos from "${playlist.title}"`)
-                    videos.forEach(function (video) {
-                        song = {
-                            title: video.title,
-                            url: video.url,
-                            duration: video.durationInSec,
-                            seek: 0,
-                            source: 'yt'
-                        }
-                        songs.push(song)
-                    })
-                    message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`)
-                }
+            if (source === 'yt') { //yt links dont play atm, for now convert all data to soundcloud.
+                songs = await convertPlaylist(await getDataFromYoutube(request, type), 'sc');
             } else if (source === 'so') {
-                const so = await playDL.soundcloud(request)
-                if (type === 'track') {
-                    song = {
-                        title: so.name,
-                        url: so.url,
-                        duration: so.durationInSec,
-                        source: 'so'
-                    }
-                    songs.push(song)
-                } else if (type === 'playlist') {
-                    const tracks = await so.all_tracks()
-                    console.log(`Fetched ${so.total_tracks} tracks from "${so.name}"`)
-                    tracks.forEach(function (track) {
-                        song = {
-                            title: track.name,
-                            url: track.url,
-                            duration: track.durationInSec,
-                            source: 'so'
-                        }
-                        songs.push(song)
-                    })
-                    message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`)
-                }
+                songs = await getDataFromSoundcloud(request, type);
             } else if (source === 'sp') {
-                //await getSpotifyToken(spotifyId,spotifySecret)
-                if (playDL.is_expired()) {
-                    await playDL.refreshToken();
-                    console.log('Refreshed Spotify token.')
-                }
-                //return message.channel.send("Spotify is currently not supported. Refer to https://play-dl.github.io/modules.html#stream for more information.")
-                const spot = await playDL.spotify(request)
-                const searchRequests = [];
-                //console.log(type);
-                if (type === 'track') {
-                    searchRequests.push(`${spot.name} ${spot.artists[0].name}`)
-                } else if (type === 'album' || type === 'playlist') {
-                    const tracks = await spot.all_tracks();
-                    const loadingMsg = await message.channel.send(`📇 Loading...`);
-                    tracks.forEach((track) => searchRequests.push(`${track.name}  ${track.artists[0].name}`))
-                    loadingMsg.delete();
-                    console.log(`Fetched ${songs.length} videos from "${tracks.name}"`)
-                }
-                await Promise.all(searchRequests.forEach(async (track) => { //fast but album is shuffled
-                    const search = await playDL.search(track, {
-                        limit: 1,
-                        source: searchSource
-                    })
-                    if (search.length == 0) return;
-                    song = {
-                        title: search[0].title,
-                        url: search[0].url,
-                        duration: search[0].durationInSec,
-                        seek: 0,
-                        source: 'yt'
-                    }
-                    songs.push(song);
-                }));
+                songs = await getDataFromSpotify(request, type);
+            }
+            if (songs.length > 1) {
                 message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`)
+            } else if (songs.length == 0) {
+                return message.channel.send(`❌ No data for that is available right now. Please try a different search.`)
             }
         }
 
-        //console.log(song);
         // if(song.source === 'yt'){
         //     let maxDuration = song.duration;
         //     if (timeToSeek > maxDuration){ 
@@ -202,7 +119,7 @@ async function validateRequest(message) {
         //         return message.channel.send(`❌ Seeking beyond limits. <0-${maxTime.minutes}:${maxTime.seconds}>`);
         //     }
         // }
-        //console.log(serverQueue);
+
         if (!serverQueue) { //if there is no existing server queue, 
             connect(message, songs); //connect to the server,
             play(message, songs[0]); //and play the requested song
@@ -227,31 +144,33 @@ async function validateRequest(message) {
             serverQueue.player.stop();
             return;
         }
+        
+        if (process.env.ENABLE_PAUSE_PROMPT) {
+            //otherwise prompt the user if they want to resume their current song, or replace it
+            const pauseMsg = await message.channel.send(`The bot is paused. The current song is \`\`${serverQueue.songs[0].title}\`\`.\n\*\*Do you want to play \`\`${songs[0].title}\`\` instead?\*\*`);
 
-        //otherwise prompt the user if they want to resume their current song, or replace it
-        const pauseMsg = await message.channel.send(`The bot is paused. The current song is \`\`${serverQueue.songs[0].title}\`\`.\n\*\*Do you want to play \`\`${songs[0].title}\`\` instead?\*\*`);
+            pauseMsg.react('❌');
+            pauseMsg.react('✅');
 
-        pauseMsg.react('❌');
-        pauseMsg.react('✅');
-
-        const collectorFilter = (reaction, user) => {
-            return ['❌', '✅'].includes(reaction.emoji.name) && user.id === message.author.id;
-        };
-        pauseMsg.awaitReactions({ filter: collectorFilter, max: 1, time: 30_000, errors: ['time'] })
-            .then(collected => {
-                if (collected.first().emoji.name == '✅') {
-                    serverQueue.songs.splice(1, 0, songs[0]);      //make it the next song
-                    serverQueue.player.stop();
-                } else {
-                    message.channel.send(`Unpausing now...`).then(msg => setTimeout(() => msg.delete(), 1_000));
-                    addSong(message, songs)
-                }
-                setTimeout(() => resume(message, serverQueue), 1_000);
-            }).catch(() => {
-                //pauseMsg.reply('No reaction after 30 seconds, operation canceled');
-            }).finally(() => {
-                pauseMsg.delete();
-            });
+            const collectorFilter = (reaction, user) => {
+                return ['❌', '✅'].includes(reaction.emoji.name) && user.id === message.author.id;
+            };
+            pauseMsg.awaitReactions({ filter: collectorFilter, max: 1, time: 30_000, errors: ['time'] })
+                .then(collected => {
+                    if (collected.first().emoji.name == '✅') {
+                        serverQueue.songs.splice(1, 0, songs[0]);      //make it the next song
+                        serverQueue.player.stop();
+                    } else {
+                        message.channel.send(`Unpausing now...`).then(msg => setTimeout(() => msg.delete(), 1_000));
+                        addSong(message, songs)
+                    }
+                    setTimeout(() => resume(message, serverQueue), 1_000);
+                }).catch(() => {
+                    //pauseMsg.reply('No reaction after 30 seconds, operation canceled');
+                }).finally(() => {
+                    pauseMsg.delete();
+                });
+        }
     } catch (e) {
         console.error(e);
         return message.channel.send(`\`Error looking for song: ${e.message}\``);
@@ -299,28 +218,28 @@ async function play(message, song) {
     //     serverQueue.timeoutID = undefined;
     // } 
 
-    let stream = {
+    let streamObject = {
         stream: null
     };
-    //console.log(song.source);
 
     try {
         if (song.source == 'yt' && song.seek > 0) {  //only yt songs can be seeked, but there are songs from various sources in the playlist
             //console.log(`Seeked ${song.seek} seconds into ${song.title}.`);
-            stream = await playDL.stream(song.url, { seek: song.seek });
+            streamObject = await playDL.stream(song.url, { seek: song.seek });
         } else if (song.source == 'discord') {
-            stream.stream = song.url;
+            streamObject.stream = song.url;
         } else {
-            stream = await playDL.stream(song.url);
+            streamObject = await playDL.stream(song.url);
         }
-        serverQueue.resource = createAudioResource(stream.stream, {
-            inputType: stream.type,
+
+        serverQueue.resource = createAudioResource(streamObject.stream, {
+            inputType: streamObject.stream.type,
             inlineVolume: true
         });
     } catch (e) {
-        serverQueue.songs.splice(0,1); //remove the song from the queue 
+        serverQueue.songs.splice(0, 1); //remove the song from the queue 
         console.error(e);
-        return message.channel.send(`\`❌ Something went wrong trying to play ${song.title}, please try a different song.\``);
+        return message.channel.send(`❌ Something went wrong trying to play \*\*${song.title}\*\*, please try a different song.`);
     }
 
     //Sets the volume relative to the input stream - i.e. 1 is normal, 0.5 is half, 2 is double.
@@ -330,6 +249,9 @@ async function play(message, song) {
     serverQueue.player.play(serverQueue.resource);
     serverQueue.lastPlayed = song;
 
+    serverQueue.player.once('error', error => {
+        console.error(`Error with resource '${song.title}': ${error}`);
+    });
     serverQueue.player.once(AudioPlayerStatus.Idle, () => {
         if (serverQueue.loop && serverQueue.keep) {    //the loop is on and the song is flagged to be kept
             serverQueue.songs.push(serverQueue.songs.shift());
@@ -340,9 +262,15 @@ async function play(message, song) {
                 serverQueue.keep = true;    //reset keep flag after skipping in a loop
             }
         }
-        play(message, serverQueue.songs[0]);
+        play(message, song);
     })
 
+    printPlayMessage(message, song);
+}
+
+
+function printPlayMessage(message, song) {
+    const serverQueue = queue.get(message.guild.id);
     let durationTime = parse(song.duration)
     if (serverQueue.loop || serverQueue.autoplay) {
         console.log(`Playing ${song.title} {${durationTime.minutes}:${durationTime.seconds}} in "${message.guild.name}"`)
@@ -362,6 +290,146 @@ async function play(message, song) {
             //.then(msg => setTimeout(() => msg.delete(), song.duration*1000));
         }
     }
+}
+
+
+/**
+ * Gets song data from SoundCloud.
+ * @param {String} request The title of a song to search for.
+ * @param {String} type The type of request that was made (track or playlist)
+ * @returns {Array} List of completed song data.
+ */
+async function getDataFromSoundcloud(request, type) {
+    if (!request) {
+        return;
+    }
+    let songs = [];
+    let song = {};
+    const so = await playDL.soundcloud(request)
+    if (type === 'track') {
+        song = {
+            title: so.name,
+            url: so.url,
+            duration: so.durationInSec,
+            source: 'so'
+        }
+        songs.push(song)
+    } else if (type === 'playlist') {
+        const tracks = await so.all_tracks()
+        console.log(`Fetched ${so.total_tracks} tracks from "${so.name}"`)
+        tracks.forEach(function (track) {
+            song = {
+                title: track.name,
+                url: track.url,
+                duration: track.durationInSec,
+                source: 'so'
+            }
+            songs.push(song)
+        })
+        message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`)
+    }
+    return songs;
+}
+
+
+/**
+ * Gets song data from YouTube.
+ * @param {String} request The title of a song to search for.
+ * @param {String} type The type of request that was made (track or playlist)
+ * @returns {Array} List of completed song data.
+ */
+async function getDataFromYoutube(request, type) {
+    if (!request) {
+        return;
+    }
+    let songs = [];
+    let song = {};
+    if (type === 'video') {
+        const video = await playDL.video_info(request);
+        song = {
+            title: video.video_details.title,
+            url: video.video_details.url,
+            duration: video.video_details.durationInSec,
+            seek: 0,
+            source: 'yt'
+        }
+        songs.push(song)
+    } else if (type === 'playlist') {
+        const playlist = await playDL.playlist_info(request, { incomplete: true }) //parse youtube playlist ignoring hidden videos
+        const videos = await playlist.all_videos()
+        console.log(`Fetched ${playlist.total_videos} videos from "${playlist.title}"`)
+        videos.forEach(function (video) {
+            song = {
+                title: video.title,
+                url: video.url,
+                duration: video.durationInSec,
+                seek: 0,
+                source: 'yt'
+            }
+            songs.push(song)
+        })
+    }
+    return songs;
+}
+
+/**
+ * Gets song data from Spotify and finds an equivalent on another platform.
+ * @param {String} request The title of a song to search for.
+ * @param {String} type The type of request that was made (track or playlist)
+ * @returns {Array} List of completed song data.
+ */
+async function getDataFromSpotify(request, type) {
+    if (playDL.is_expired()) {
+        await playDL.refreshToken();
+        console.log('Refreshed Spotify token.')
+    }
+    //return message.channel.send("Spotify is currently not supported. Refer to https://play-dl.github.io/modules.html#stream for more information.")
+    const spot = await playDL.spotify(request)
+    const searchRequests = [];
+    let song = {};
+    if (type === 'track') {
+        song.title = `${spot.name} ${spot.artists.map(a => a.name)}`
+        searchRequests.push(song);
+    } else if (type === 'album' || type === 'playlist') {
+        const tracks = await spot.all_tracks();
+        tracks.forEach((track) => {
+            song.title = `${track.name}  ${track.artists[0].name}`;
+            searchRequests.push(song)
+        })
+        console.log(`Fetched ${searchRequests.length} videos from "${tracks.name}"`)
+    }
+    return await convertPlaylist(searchRequests);
+}
+
+/**
+ * Converts a list of song titles to a playlist from YouTube or SoundCloud.
+ * @param {Array} songs List of song titles to search for.
+ * @param {Object} searchSource Where the songs will be searched.
+ * @returns {Array} List of completed song data.
+ */
+async function convertPlaylist(requests, searchSource = 'sc') {
+    if (searchSource == 'yt' || searchSource == 'youtube') {
+        searchSource = { youtube: 'video' }
+    } else if (searchSource == 'sc' || searchSource == 'soundcloud') {
+        searchSource = { soundcloud: 'tracks' }
+    }
+    let songs = [];
+    await Promise.all(requests.map(async (track) => { //perform a search on the requested platform for each request
+        const search = await playDL.search(track.title, {
+            limit: 1,
+            source: searchSource
+        })
+        if (search.length == 0) return;
+        let song = {
+            title: search[0].title || search[0].name,
+            url: search[0].url,
+            duration: search[0].durationInSec,
+            seek: 0,    //amount of time to seek to in the song in seconds
+            source: 'youtube' in searchSource ? 'yt' : 'sc'
+        }
+        songs.push(song);
+    }));
+    return songs;
 }
 
 /**
@@ -475,6 +543,7 @@ function seek(message, time = -1) {
     const serverQueue = queue.get(message.guild.id);
 
     const args = message.content.split(" ");
+    if (!args[1]) return;
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to seek.");
     }
@@ -517,8 +586,8 @@ function seek(message, time = -1) {
  */
 function forward(message) {
     const serverQueue = queue.get(message.guild.id);
-
     const args = message.content.split(" ");
+
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to forward.");
     }
@@ -533,9 +602,6 @@ function forward(message) {
 
     let displayStartTime = parse(currentTime);
     let displayEndTime = parse(Math.min(newTime, song.duration));
-    //console.log(amountToForward);
-    //console.log(displayStartTime);
-    //console.log(displayEndTime);
 
     console.log(`Forwarded ${amountToForward} seconds in ${song.title} from ${displayStartTime.minutes}:${displayStartTime.seconds} to ${displayEndTime.minutes}:${displayEndTime.seconds}`);
     const ffMsg = message.channel.send(`Forwarded \*\*${song.title}\*\* from \`${displayStartTime.minutes}:${displayStartTime.seconds}\` to \`${displayEndTime.minutes}:${displayEndTime.seconds}\`.`);
@@ -553,13 +619,15 @@ function forward(message) {
  */
 function volume(message) {
     const serverQueue = queue.get(message.guild.id);
+    const args = message.content.split(" ");
 
     if (!serverQueue) {
         return message.channel.send("❌ Play a song to change its volume.");
     }
+
     let [min, max] = [0, 500];
-    const args = message.content.split(" ");
-    let vol = parseInt(args[1])
+    let vol = parseInt(args[1]);
+
     if (vol < min || vol > max || isNaN(vol)) {
         return message.channel.send(`❌ Volume must be 0% to 500%.`)
     }
@@ -574,13 +642,13 @@ function volume(message) {
  * @param {Message} message A Discord message object.
  * @returns {Message} A message containing lyrics of the current song.
  */
-async function lyrics(message, key){
+async function lyrics(message, key) {
     const serverQueue = queue.get(message.guild.id);
 
     if (!serverQueue || serverQueue.songs.length == 0) {
         return message.channel.send("❌ No song to get lyrics for.");
     }
-    const {title, duration, artist} = serverQueue.songs[0];
+    const { title, duration, artist } = serverQueue.songs[0];
     const options = {
         apiKey: key,
         title: title,
@@ -590,25 +658,26 @@ async function lyrics(message, key){
     console.log(`Finding lyrics for ${options.title}`);
     const searchMsg = await message.channel.send(`Finding lyrics for \*\*${title}\*\* 🔎`);
     getLyrics(options)
-            .then((lyrics) => { 
-                let song = serverQueue.songs[0];
-                searchMsg.delete();
-                if (!lyrics) { 
-                    console.log(`No lyrics found.`);
-                    return message.channel.send(`❌ No lyrics found for \*\*${title}\*\*`)
-                }
-                console.log(`Found lyrics for ${serverQueue.songs[0].title}`);
-                let strings = splitText(lyrics);
-                let startTime = song.seek ?? 0;
-                let currentTime = song.duration - Math.floor((serverQueue.resource.playbackDuration + (startTime*1000))/1000); //calculate remaining time in the song
-                //console.log(currentTime)
-                for (string of strings) {
-                    message.channel.send(string).then(string => setTimeout(() => string.delete(), currentTime*1000));
-                }
-                //return message.channel.send(lyrics)
-            })
-            .catch((e) => console.error(e));
+        .then((lyrics) => {
+            let song = serverQueue.songs[0];
+            searchMsg.delete();
+            if (!lyrics) {
+                console.log(`No lyrics found.`);
+                return message.channel.send(`❌ No lyrics found for \*\*${title}\*\*`)
+            }
+            console.log(`Found lyrics for ${serverQueue.songs[0].title}`);
+            let strings = splitText(lyrics);
+            let startTime = song.seek ?? 0;
+            let currentTime = song.duration - Math.floor((serverQueue.resource.playbackDuration + (startTime * 1000)) / 1000); //calculate remaining time in the song
+            //console.log(currentTime)
+            for (string of strings) {
+                message.channel.send(string).then(string => setTimeout(() => string.delete(), currentTime * 1000));
+            }
+            //return message.channel.send(lyrics)
+        })
+        .catch((e) => console.error(e));
 }
+
 
 module.exports = {
     validateRequest, autoplay, seek, play, pause, resume, replay, forward, volume, lyrics
