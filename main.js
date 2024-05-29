@@ -5,7 +5,7 @@
     Find a way to auto-refresh youtube cookie/bypass age-restricted content
 */
 
-const {Events, Message, Guild} = require('discord.js');
+const {Events, Message, Guild, EmbedBuilder, AttachmentBuilder} = require('discord.js');
 const {getVoiceConnection} = require('@discordjs/voice');
 
 const {
@@ -110,6 +110,7 @@ function execute(message){
         //return message.channel.send("❌ You have to be in a voice channel to use commands.");
         return;
     }
+
     if (command == 'run') {
         command = args.join(' ');
     } 
@@ -130,7 +131,7 @@ function execute(message){
         case 'next': case 'remove': case 'skip':
             skip(message);
             break;
-        case 'skipto':
+        case 'skipto': case 'jump': case 'jumpto':
             skipto(message);
             break;
         case 'vol': case 'volume':
@@ -151,9 +152,6 @@ function execute(message){
         case 'np': case 'q': case 'queue':
             showQueue(message);
             break;
-        case 'clear':
-            clear(message);
-            break;
         case 'shuffle':
             shuffle(message);
             break;
@@ -166,8 +164,8 @@ function execute(message){
         case 'lyrics':
             lyrics(message, geniusApiKey);
             break;
-        case 'shut': case 'stop':    
-            stop(message);
+        case 'shut': case 'stop': case 'clear':  
+            clear(message);
             break;
         case 'die': case 'kill': case 'disconnect': case 'kick': case 'leave':
             kick(message);
@@ -222,18 +220,17 @@ function help(message){
     const commands = `
     !play -sc|-pl|-al query -- search for a song, playlist(-pl), or album(-al) on YouTube or SoundCloud(-sc)
     !play url -- plays a YouTube or SoundCloud URL 
-    !related -- plays songs related to the current or previous song (only YouTube songs)
+    !autoplay -- plays songs related to the current or previous song (only YouTube songs)
 
     !pause -- pause the bot
     !resume -- resume the bot
     !replay -- replays the last song
-    !stop -- resets the bot
     !kick/leave -- bye bye bot ! 
 
     !skip number|word -- search for a song to skip/remove from the queue by number or word
     !skipto number|word -- search for a song to jump to in the queue by number or word
     !queue (n) -- shows (up to n) songs in the queue 
-    !clear -- removes all songs in the queue  
+    !clear/stop -- removes all songs in the queue  
 
     !shuffle -- shuffles the queue
     !loop -- repeats the queue 
@@ -245,7 +242,38 @@ function help(message){
     
     To view these commands again, type !help or !commands
     `
-    message.channel.send('```' + commands + '```');//.then(msg => setTimeout(() => msg.delete(), 30*1000));
+    //message.channel.send('```' + commands + '```');//.then(msg => setTimeout(() => msg.delete(), 30*1000));
+
+    const pbImg = new AttachmentBuilder('../MusicBot/assets/pb.png');
+    const helpEmbed = {
+        title: 'Simple commands',
+        // author: {
+        //     name: 'Simple commands',
+        //     //icon_url: 'attachment://pb.png'
+        // },
+        description: `Commands to control your bot`,
+        fields: [
+            {
+                name: '!play query',
+                value: 'Search or play a song from YouTube',
+                inline: true
+            },        
+            {
+                name: 'Optional flags', //Arguments can be added to the play command to modify its functionality
+                value: `-sc > Enables SoundCloud searching.
+                        -pl > Searches specifically for a playlist.
+                        -al > Searches specifically for an album.`,
+                inline: true
+            },
+            //{ name: ' ', value: ' ' },
+            {
+                name: 'Also available',
+                value: '!skip, !pause, !resume, !stop, !replay, !kick, !shuffle, !volume, !loop, !seek, !ff, !lyrics, !queue, !autoplay, !skipto',
+            },
+        ]
+
+    }
+    message.channel.send({embeds: [helpEmbed]});
 }
 
 
