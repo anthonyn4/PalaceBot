@@ -8,7 +8,11 @@ const { connect } = require('./connect')
 const { queue, addSong } = require('./queue')
 const { parse, getRandomInt, splitText } = require('./utils');
 
-
+const YT_VIDEO = {youtube : 'video'}
+const YT_PLAYLIST = {youtube : 'playlist'}
+const SC_TRACK = {soundcloud : 'tracks'}
+const SC_PLAYLIST = {soundcloud : 'playlists'}
+const SC_ALBUM = {soundcloud : 'albums'}
 /**
  * Processes user input to either search for a song or a URL.
  * @param {Message} message A Discord message object.
@@ -38,7 +42,7 @@ async function validateRequest(message) {
         let songs = []; //array of song objects
         //let check = await playDL.validate(args[1].trim());
         let check = await playDL.validate(request);
-        let searchSource = { soundcloud: 'tracks' };  //where we want to perform the search and what type of result (YOUTUBE STOPPED WORKING FOR SOME REASON)
+        let searchSource = YT_VIDEO;  //where we want to perform the search and what type of result (YOUTUBE STOPPED WORKING FOR SOME REASON)
         let searchMsg = '';
         if (check === false) {
             song = {
@@ -55,19 +59,19 @@ async function validateRequest(message) {
             options = options.map(e => e.trim());
             request = request.replace(argsRegex, "").trim();
             if (options.includes('-sc') || options.includes('-soundcloud')) {
-                searchSource = { soundcloud: 'tracks' };
+                searchSource = SC_TRACK;
                 if (options.includes('-pl') || options.includes('-playlist')) {
-                    searchSource = { soundcloud: 'playlists' }
-                    prefix = 'a playlist '
+                    searchSource = SC_PLAYLIST;
+                    prefix = 'a playlist ';
                 } else if (options.includes('-al') || options.includes('-album')) {
-                    searchSource = { soundcloud: 'albums' }
-                    prefix = 'an album '
+                    searchSource = SC_ALBUM;
+                    prefix = 'an album ';
                 }
-                suffix = ' on SoundCloud'
+                suffix = ' on SoundCloud';
             } else if (options.includes('-pl') || options.includes('-playlist')) {
-                searchSource = { youtube: 'playlist' }
-                prefix = 'a playlist '
-                suffix = ' on YouTube'
+                searchSource = YT_PLAYLIST;
+                prefix = 'a playlist ';
+                suffix = ' on YouTube';
             }
             searchMsg = await message.channel.send(`Searching for ${prefix}"${request}"${suffix} 🔎`);
             console.log(`${message.author.username} searched for ${prefix}"${request}"${suffix} 🔎`);
@@ -78,7 +82,7 @@ async function validateRequest(message) {
             })
             searchMsg.delete();
             if (search.length == 0) {
-                return message.channel.send(`❌ No results found for  '${request}'  😢`);
+               return message.channel.send(`❌ No results found for  '${request}'  😢`);
             } else {
                 if (search[0].type == 'track' || search[0].type == 'video') {
                     song = {
@@ -100,7 +104,8 @@ async function validateRequest(message) {
         } else {
             let [source, type] = check.split("_");
             if (source === 'yt') { //yt links dont play atm, for now convert all data to soundcloud.
-                songs = await convertPlaylist(await getDataFromYoutube(request, type), 'sc');
+                songs = await getDataFromYoutube(request, type);
+                //message.channel.send("⚠️ Consider temporarily using SoundCloud as YouTube links may be inaccurate.").then(msg => setTimeout(() => msg.delete(), 10_000));
             } else if (source === 'so') {
                 songs = await getDataFromSoundcloud(request, type);
             } else if (source === 'sp') {
@@ -228,21 +233,22 @@ async function play(message, song) {
     try {
         if (song.source == 'yt' && song.seek > 0) {  //only yt songs can be seeked, but there are songs from various sources in the playlist
             //console.log(`Seeked ${song.seek} seconds into ${song.title}.`);
-            streamObject = await playDL.stream(song.url, { seek: song.seek });
+            streamObject = await playDL.stream(song.url, { seek: song.seek, discordPlayerCompatibility: true });
         } else if (song.source == 'discord') {
             streamObject.stream = song.url;
         } else {
-            streamObject = await playDL.stream(song.url);
+            streamObject = await playDL.stream(song.url, {discordPlayerCompatibility: true}); //MUST be set to true or yt links will get stuck in buffering.
         }
-
         serverQueue.resource = createAudioResource(streamObject.stream, {
             inputType: streamObject.stream.type,
             inlineVolume: true
         });
+        //console.log(serverQueue.resource)
     } catch (e) {
         serverQueue.songs.splice(0, 1); //remove the song from the queue 
         console.error(e);
-        return message.channel.send(`❌ Something went wrong trying to play \*\*${song.title}\*\*, please try a different song.`);
+        //return message.channel.send(`❌ Something went wrong trying to play \*\*${song.title}\*\*, please try a different song.`);
+        return message.channel.send(`❌ Age restricted content. Modify your search or play a different song.`); //find a way to catch and display different errors in a user-friendly way
     }
 
     //Sets the volume relative to the input stream - i.e. 1 is normal, 0.5 is half, 2 is double.
@@ -266,7 +272,7 @@ async function play(message, song) {
         }
         play(message, serverQueue.songs[0]); //play the next song in the queue
     })
-
+    //setInterval(() => console.log(serverQueue.player.state.status), 5000)
     printPlayMessage(message, song);
 }
 
@@ -328,7 +334,6 @@ async function getDataFromSoundcloud(request, type) {
             }
             songs.push(song)
         })
-        message.channel.send(`Added \*\*${songs.length}\*\* songs to the queue.`)
     }
     return songs;
 }
