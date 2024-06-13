@@ -150,7 +150,6 @@ async function validateRequest(message) {
             serverQueue.songs.splice(1, 0, songs[0]);      //make it the next song
             resume(message);
             serverQueue.player.stop();
-            return;
         } else if (process.env.ENABLE_PAUSE_PROMPT) {
             //otherwise prompt the user if they want to resume their current song, or replace it
             const pauseMsg = await message.channel.send(`The bot is paused. The current song is \`\`${serverQueue.songs[0].title}\`\`.\n\*\*Do you want to play \`\`${songs[0].title}\`\` instead?\*\*`);
