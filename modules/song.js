@@ -42,7 +42,7 @@ async function validateRequest(message) {
         let songs = []; //array of song objects
         //let check = await playDL.validate(args[1].trim());
         let check = await playDL.validate(request);
-        let searchSource = YT_VIDEO;  //where we want to perform the search and what type of result (YOUTUBE STOPPED WORKING FOR SOME REASON)
+        let searchSource = YT_VIDEO;  //where we want to perform the search and what type of result
         let searchMsg = '';
         if (check === false) {
             song = {
@@ -178,7 +178,7 @@ async function validateRequest(message) {
         }
     } catch (e) {
         console.error(e);
-        return message.channel.send(`\`Error looking for song: ${e.message}\``);
+        return message.channel.send(`❌ Age restricted content. Please try a different search.`);
     }
 }
 
@@ -242,10 +242,13 @@ async function play(message, song) {
         });
         //console.log(serverQueue.resource)
     } catch (e) {
-        serverQueue.songs.splice(0, 1); //remove the song from the queue 
-        console.error(e);
+        const s = serverQueue.songs.splice(0, 1); //remove the song from the queue 
+        console.error(`Error playing '${s[0].title}': ${e.message}`);
         //return message.channel.send(`❌ Something went wrong trying to play \*\*${song.title}\*\*, please try a different song.`);
-        return message.channel.send(`❌ Age restricted content. Modify your search or play a different song.`); //find a way to catch and display different errors in a user-friendly way
+        message.channel.send(`❌ \*\*${s[0].title}\*\* is age restricted content.`); //find a way to catch and display different errors in a user-friendly way
+        if (serverQueue.songs.length > 1) {
+            return play(message, serverQueue.songs[0]);
+        }
     }
 
     //Sets the volume relative to the input stream - i.e. 1 is normal, 0.5 is half, 2 is double.
