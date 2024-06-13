@@ -20,8 +20,9 @@ const { addSpeechEvent, SpeechEvents } = require("discord-speech-recognition");
 const playDL = require('play-dl');
 const { client } = require('./modules/client')
 const { connect } = require('./modules/connect');
-const { queue, skip, skipto, clear, stop, loopSong, showQueue, shuffle } = require('./modules/queue');
+const { queue, skip, skipto, clear, loopSong, showQueue, shuffle } = require('./modules/queue');
 const { validateRequest, autoplay, seek, forward, pause, resume, replay, volume, lyrics} = require('./modules/song')
+const {setCooldown, hasCooldown} = require('./modules/utils')
 
 addSpeechEvent(client, {profanityFilter: false});
 
@@ -97,7 +98,10 @@ require('events').EventEmitter.defaultMaxListeners = 100; //not recommended but 
  */
 function execute(message){
     //const serverQueue = queue.get(message.guild.id);
-
+    if (hasCooldown(message.author.id)) {
+        //console.log(`${message.author.username} is on cooldown.`)
+        return;
+    }
     const args = message.content.slice(prefix.length).split(' ');
     //console.log(args);
     let command = args[0].toLowerCase();
@@ -179,6 +183,7 @@ function execute(message){
         //     help(message);
         //     break;
     }
+    setCooldown(message.author.id);
 }
 
 /**

@@ -1,7 +1,7 @@
-const {verifyString} = require('discord.js');
+const { verifyString } = require('discord.js');
 const axios = require('axios');
 const fs = require('fs');
-
+const cooldowns = new Set();
 
 //add splitting at specified character
 // function splitText(text) {
@@ -35,7 +35,7 @@ const fs = require('fs');
 //       'Content-Type' : 'application/x-www-form-urlencoded'
 //     },
 //     data: 'grant_type=client_credentials'
-    
+
 //   }
 //   axios.request(options)
 //   .then(response => {
@@ -63,32 +63,32 @@ function getRandomInt(min, max) {
 
 //Discord's now deprecated splitMessage function (default maxLength is 2000)
 function splitText(text, { maxLength = 1990, char = '\n', prepend = '', append = '' } = {}) {
-    text = verifyString(text);
-    if (text.length <= maxLength) return [text];
-    let splitText = [text];
-    if (Array.isArray(char)) {
-      while (char.length > 0 && splitText.some(elem => elem.length > maxLength)) {
-        const currentChar = char.shift();
-        if (currentChar instanceof RegExp) {
-          splitText = splitText.flatMap(chunk => chunk.match(currentChar));
-        } else {
-          splitText = splitText.flatMap(chunk => chunk.split(currentChar));
-        }
+  text = verifyString(text);
+  if (text.length <= maxLength) return [text];
+  let splitText = [text];
+  if (Array.isArray(char)) {
+    while (char.length > 0 && splitText.some(elem => elem.length > maxLength)) {
+      const currentChar = char.shift();
+      if (currentChar instanceof RegExp) {
+        splitText = splitText.flatMap(chunk => chunk.match(currentChar));
+      } else {
+        splitText = splitText.flatMap(chunk => chunk.split(currentChar));
       }
-    } else {
-      splitText = text.split(char);
     }
-    //if (splitText.some(elem => elem.length > maxLength)) throw new RangeError('SPLIT_MAX_LEN');
-    const messages = [];
-    let msg = '';
-    for (const chunk of splitText) {
-      if (msg && (msg + char + chunk + append).length > maxLength) {
-        messages.push(msg + append);
-        msg = prepend;
-      }
-      msg += (msg && msg !== prepend ? char : '') + chunk;
+  } else {
+    splitText = text.split(char);
+  }
+  //if (splitText.some(elem => elem.length > maxLength)) throw new RangeError('SPLIT_MAX_LEN');
+  const messages = [];
+  let msg = '';
+  for (const chunk of splitText) {
+    if (msg && (msg + char + chunk + append).length > maxLength) {
+      messages.push(msg + append);
+      msg = prepend;
     }
-    return messages.concat(msg).filter(m => m);
+    msg += (msg && msg !== prepend ? char : '') + chunk;
+  }
+  return messages.concat(msg).filter(m => m);
 }
 
 /**
@@ -96,27 +96,37 @@ function splitText(text, { maxLength = 1990, char = '\n', prepend = '', append =
  * @param {number} input number to parse.
  * @returns {Object|number} Object containing minutes and seconds or number in seconds
  */
- function parse(input){ 
-    //console.log(input);
-    if (typeof input == "string" && input.indexOf(":") != -1) { //input in form of mm:ss
-        let time = input.split(":"); 
-        if (isNaN(time[0]) || isNaN(time[1]) || time[0] < 0 || time[1] < 0){
-            //
-        } else {    //otherwise, parse the given time 
-            let minutes = Number(time[0]*60);
-            let seconds = Number(time[1]);
-            timeToSeek = minutes+seconds;
-            return timeToSeek;
-            //console.log(timeToSeek);
-        }
-    } else if (typeof input == "number"){
-        let minutes = Math.floor(input/60);
-        let seconds = input%60 < 10 ? '0' + input%60 : input%60;
-        //return [minutes, seconds];
-        return {minutes: minutes, seconds: seconds};
-    } else {
-        return 0;
+function parse(input) {
+  //console.log(input);
+  if (typeof input == "string" && input.indexOf(":") != -1) { //input in form of mm:ss
+    let time = input.split(":");
+    if (isNaN(time[0]) || isNaN(time[1]) || time[0] < 0 || time[1] < 0) {
+      //
+    } else {    //otherwise, parse the given time 
+      let minutes = Number(time[0] * 60);
+      let seconds = Number(time[1]);
+      timeToSeek = minutes + seconds;
+      return timeToSeek;
+      //console.log(timeToSeek);
     }
+  } else if (typeof input == "number") {
+    let minutes = Math.floor(input / 60);
+    let seconds = input % 60 < 10 ? '0' + input % 60 : input % 60;
+    //return [minutes, seconds];
+    return { minutes: minutes, seconds: seconds };
+  } else {
+    return 0;
+  }
 }
 
-module.exports = {getRandomInt, splitText, parse};
+function setCooldown(id) {
+  cooldowns.add(id);
+  setTimeout(() => {
+    cooldowns.delete(id)
+  }, 1000);
+}
+
+function hasCooldown(id) {
+  return cooldowns.has(id);
+}
+module.exports = { getRandomInt, splitText, parse, setCooldown, hasCooldown };
