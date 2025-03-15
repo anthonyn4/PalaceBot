@@ -4,3 +4,4 @@ config.json
 auth.js
 assets
 start.bat
+.env
