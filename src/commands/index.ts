@@ -1,4 +1,4 @@
-import { Message, SharedSlashCommand, SlashCommandBuilder } from "discord.js";
+import { Message, SharedSlashCommand } from "discord.js";
 import { VoiceMessage } from "discord-speech-recognition";
 import { JoinCommand } from "./JoinCommand";
 import { PlayCommand } from "./PlayCommand";
@@ -10,10 +10,8 @@ import { QuitCommand } from "./QuitCommand";
 import { DisconnectCommand } from "./DisconnectCommand";
 import { HistoryCommand } from "./HistoryCommand";
 import { HelpCommand } from "./HelpCommand";
-
-import { Pair } from "../util/Pair";
-import { DiscordClient } from "../DiscordClient";
 import { QueueCommand } from "./QueueCommand";
+import { DiscordClient } from "../DiscordClient";
 
 export const Commands: SharedSlashCommand[] = [
     HelpCommand.SlashCommand,
@@ -52,10 +50,12 @@ export class CommandExecutor {
             case "louder":
             case "quieter":
             case "turn":
-                return new VolumeCommand(client);
             case "volume":
                 return new VolumeCommand(client);
             case "replay":
+                let command = new LoopCommand(client);
+                command.args = ["once"];
+                return command;
             case "loop":
             case "repeat":
                 return new LoopCommand(client);
@@ -70,6 +70,8 @@ export class CommandExecutor {
                 return new DisconnectCommand(client);
             case "history":
                 return new HistoryCommand(client);
+            case "queue":
+                return new QueueCommand(client);
             case "help":
             case "commands":
                 return new HelpCommand(client);
@@ -93,64 +95,19 @@ export class CommandExecutor {
         const commandName = split[0];
         const args = split.slice(1);
 
+        // full text length commands such as phrases
         let command = this.getCommand(client, text);
-        if (command) {
-            command.message = message;
-            command.args = args;
-            command.execute();
-            return;
-        }
-        switch (commandName) {
-            case "connect":
-            case "come":
-            case "cum":
-            case "join":
-            case "j":
-                new JoinCommand(client, message, args).execute();
-                break;
-            case "play":
-            case "p":
-                new PlayCommand(client, message, args).execute();
-                break;
-            case "pause":
-                new PauseCommand(client, message, args).execute();
-                break;
-            case "next":
-            case "skip":
-                new SkipCommand(client, message, args).execute();
-                break;
-            case "louder":
-            case "quieter":
-            case "turn":
-                new VolumeCommand(client, message, [commandName]).execute();
-                break;
-            case "volume":
-                new VolumeCommand(client, message, args).execute();
-                break;
-            case "replay":
-                new LoopCommand(client, message, ["once"]).execute();
-            case "loop":
-            case "repeat":
-                new LoopCommand(client, message, args).execute();
-                break;
-            case "quit":
-            case "die":
-                new QuitCommand(client, message, args).execute();
-                break;
-            case "disconnect":
-            case "ff":
-                new DisconnectCommand(client, message, args).execute();
-                break;
-            case "history":
-                new HistoryCommand(client, message, args).execute();
-                break;
-            case "help":
-            case "commands":
-                new HelpCommand(client, message, args).execute();
-                break;
-            default:
+        if (!command) {
+            // single word commands
+            command = this.getCommand(client, commandName);
+            if (!command) {
                 console.log('command not found 💀');
-                break;
+                return;
+            }
         }
+
+        command.message = message;
+        if (!command.args) command.args = args;
+        command.execute();
     }
 }
