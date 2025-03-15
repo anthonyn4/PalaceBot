@@ -1,4 +1,4 @@
-import { BaseGuildTextChannel, ChatInputCommandInteraction, EmbedBuilder, Message, SlashCommandBuilder } from "discord.js";
+import { ChatInputCommandInteraction, EmbedBuilder, Message } from "discord.js";
 import { VoiceMessage } from "discord-speech-recognition";
 import { DiscordClient } from "../DiscordClient";
 

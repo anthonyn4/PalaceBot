@@ -1,8 +1,7 @@
-import { ChatInputCommandInteraction, GuildMember, InteractionContextType, MessageFlags, SlashCommandBuilder } from "discord.js";
+import { ChatInputCommandInteraction, GuildMember, InteractionContextType, SlashCommandBuilder } from "discord.js";
 import { BaseCommand } from "./BaseCommand";
 
-export class SkipCommand extends BaseCommand {
-
+export class StopCommand extends BaseCommand {
     public execute() {
         const guild = this.message!.guild;
         const voice = this.message!.member?.voice;
@@ -16,8 +15,8 @@ export class SkipCommand extends BaseCommand {
     }
 
     public static SlashCommand = new SlashCommandBuilder()
-        .setName("skip")
-        .setDescription("Skips the current audio")
+        .setName("stop")
+        .setDescription("Stops the current audio")
         .setContexts(InteractionContextType.Guild);
 
     public interact(ix: ChatInputCommandInteraction): void {
@@ -32,17 +31,6 @@ export class SkipCommand extends BaseCommand {
             return;
         }
 
-        controller.playNextAudio().then((details) => {
-            let embed = this.getDefaultEmbed();
-            if (details) {
-                embed.setDescription(`Now playing '${details.title}' 🎶`);
-            } else {
-                embed.setDescription("No more songs to play 😔");
-            }
-            ix.reply({
-                embeds: [embed],
-                flags: MessageFlags.Ephemeral
-            });
-        });
+        controller.audioPlayer.stop();
     }
 }

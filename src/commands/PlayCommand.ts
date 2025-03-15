@@ -62,11 +62,12 @@ export class PlayCommand extends BaseCommand {
         // audio resource exists and hasn't ended (being paused does not mean ended)
         if (controller.audioResource && !controller.audioResource.ended) {
             controller.audioQueue.push(details);
-            embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
 
+            embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
             embed.setTitle(`🎶 Found on ${details.source}`);
             embed.setDescription(`[${details.title}](${details.url}) added to the queue ⏳`);
             embed.setAuthor({ name: StringUtil.formatSeconds(details.durationInSec) });
+            return { result: true, embed }
         }
 
         embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
@@ -74,11 +75,10 @@ export class PlayCommand extends BaseCommand {
             embed.setTitle(`🎶 Playing from ${details.source}`);
             embed.setDescription(`Now playing [${details.title}](${details.url}) 🎶`);
             embed.setAuthor({ name: StringUtil.formatSeconds(details.durationInSec) });
-        } else {
-            return { result: false, embed }
+            return { result: true, embed }
         }
 
-        return { result: true, embed }
+        return { result: false, embed }
     }
 
     public execute() {

@@ -1,5 +1,6 @@
 import { Message, SharedSlashCommand } from "discord.js";
 import { VoiceMessage } from "discord-speech-recognition";
+import { DiscordClient } from "../DiscordClient";
 import { JoinCommand } from "./JoinCommand";
 import { PlayCommand } from "./PlayCommand";
 import { PauseCommand } from "./PauseCommand";
@@ -11,7 +12,7 @@ import { DisconnectCommand } from "./DisconnectCommand";
 import { HistoryCommand } from "./HistoryCommand";
 import { HelpCommand } from "./HelpCommand";
 import { QueueCommand } from "./QueueCommand";
-import { DiscordClient } from "../DiscordClient";
+import { StopCommand } from "./StopCommand";
 
 export const Commands: SharedSlashCommand[] = [
     HelpCommand.SlashCommand,
@@ -22,6 +23,7 @@ export const Commands: SharedSlashCommand[] = [
     LoopCommand.LoopCommand_,
     LoopCommand.ReplayCommand,
     PauseCommand.SlashCommand,
+    StopCommand.SlashCommand,
     PlayCommand.SlashCommand,
     QuitCommand.SlashCommand,
     SkipCommand.SlashCommand,
@@ -43,6 +45,8 @@ export class CommandExecutor {
                 return new PlayCommand(client);
             case "pause":
                 return new PauseCommand(client);
+            case "stop":
+                return new StopCommand(client);
             case "next":
             case "skip":
             case "thank you next":

@@ -1,4 +1,4 @@
-import { AudioPlayer, AudioResource, createAudioResource, VoiceConnection } from "@discordjs/voice";
+import { AudioPlayer, AudioPlayerStatus, AudioResource, createAudioResource, VoiceConnection } from "@discordjs/voice";
 import { AudioDetails } from "./AudioDetails";
 import play from "play-dl";
 import { LimitedCollection } from "discord.js";
@@ -58,7 +58,13 @@ export class AudioController {
 
     public async playNextAudio() {
         const next = this.audioQueue.shift();
-        if (!next) return undefined;
+        if (!next) {
+            if (this.audioPlayer) {
+                this.audioPlayer.stop();
+                this.audioResource = undefined;
+            }
+            return undefined;
+        }
 
         switch (next.url.hostname) {
             case "soundcloud.com":
@@ -76,6 +82,7 @@ export class AudioController {
                         let track = tracks[0];
                         let details = new AudioDetails("YouTube", new URL(track.url), track.title ?? track.url, track.durationInSec);
                         this.playAudio(details);
+                        console.log(`found an alternative for '${next.title}' 🥰`);
                     } else {
                         console.log(`i couldn't find an alternative for '${next.title}' 😞`);
                         this.playNextAudio();
