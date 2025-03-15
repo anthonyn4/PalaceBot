@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, GuildMember, InteractionContextType, MessageFlags, SlashCommandBuilder } from "discord.js";
+import { ChatInputCommandInteraction, EmbedField, GuildMember, InteractionContextType, MessageFlags, SlashCommandBuilder } from "discord.js";
 import { StringUtil } from "../util/StringUtil";
 import { BaseCommand } from "./BaseCommand";
 import { AudioController } from "src/AudioController";
@@ -20,12 +20,13 @@ export class HistoryCommand extends BaseCommand {
         const embed = this.getDefaultEmbed();
         embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
 
-        let text = "";
+        let fields: EmbedField[] = [];
         controller.audioHistory.forEach((details) => {
-            text += `${StringUtil.formatSeconds(details.durationInSec)} ${details.title}`;
+            fields.push({ name: details.title, value: StringUtil.formatSeconds(details.durationInSec), inline: false });
         });
-        if (text.length == 0) text = "No songs have been played";
-        embed.setDescription(text);
+        embed.addFields(fields);
+
+        if (fields.length == 0) embed.setDescription("No songs have been queued");
         return embed;
     }
 
