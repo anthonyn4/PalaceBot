@@ -52,7 +52,8 @@ export class PlayCommand extends BaseCommand {
                     break;
                 default:
                     embed = this.getErrorEmbed();
-                    return embed.setDescription("The provided link is unsupported. Please only use YouTube and SoundCloud links.");
+                    embed.setDescription("The provided link is unsupported. Please only use YouTube and SoundCloud links.");
+                    return { result: false, embed }
             }
         }
 
@@ -73,9 +74,11 @@ export class PlayCommand extends BaseCommand {
             embed.setTitle(`🎶 Playing from ${details.source}`);
             embed.setDescription(`Now playing [${details.title}](${details.url}) 🎶`);
             embed.setAuthor({ name: StringUtil.formatSeconds(details.durationInSec) });
+        } else {
+            return { result: false, embed }
         }
 
-        return embed;
+        return { result: true, embed }
     }
 
     public execute() {
@@ -96,7 +99,9 @@ export class PlayCommand extends BaseCommand {
         if (voice.id != controller.voiceChannelId) return;
 
         let query = this.args.join(" ");
-        this.onPlayAudio(controller, query);
+        this.onPlayAudio(controller, query).then((res) => {
+            this.sendEmbed(res.embed);
+        });
     }
 
     public async onPlayAudio(controller: AudioController, query: string) {
@@ -105,7 +110,7 @@ export class PlayCommand extends BaseCommand {
         if (query.length == 0) {
             embed.setDescription("Audio resumed");
             controller.audioPlayer.unpause();
-            return embed;
+            return { result: true, embed };
         }
 
         // a direct link to the audio is provided. in this case, only a link shold be provided
@@ -120,35 +125,34 @@ export class PlayCommand extends BaseCommand {
 
                 embed = this.getErrorEmbed();
                 embed.setDescription(`An error occurred while processing the link.\r\n\`\`\`${error.message}\`\`\``);
-                return embed;
+                return { result: false, embed };
             }
         }
 
         console.log(`looking for '${query}' on YouTube 🔎`);
-        let res = await this.getAudioTrack(query, { youtube: "video" })
-        if (res) {
-            let first = res[0];
+        let tracks = await this.getAudioTrack(query, { youtube: "video" })
+        if (tracks) {
+            let first = tracks[0];
             let url = new URL(first.url);
             let details = new AudioDetails("YouTube", url, first.title ?? url.href, first.durationInSec);
-            if (embed = await this.playAudio(controller, url, details)) {
-                return embed;
-            }
+            let res = await this.playAudio(controller, url, details);
+            if (res.result) return res;
         }
 
         console.log(`failed... looking for '${query}' on SoundCloud 🔎`);
-        res = await this.getAudioTrack(query, { soundcloud: "tracks" });
-        let first = res[0];
+        tracks = await this.getAudioTrack(query, { soundcloud: "tracks" });
+        let first = tracks[0];
         if (first instanceof SoundCloudTrack) {
             let url = new URL(first.url);
             let details = new AudioDetails("SoundCloud", url, first.name, first.durationInSec);
-            embed = await this.playAudio(controller, url, details);
-            return embed;
+            let res = await this.playAudio(controller, url, details);
+            if (res.result) return res;
         }
 
         console.log(`failed... '${query}' could not be found 😞`);
         embed = this.getErrorEmbed();
         embed.setDescription(`Failed to find anything named '${query}'`);
-        return embed;
+        return { result: false, embed };
     }
 
     public static SlashCommand = new SlashCommandBuilder()
@@ -175,9 +179,9 @@ export class PlayCommand extends BaseCommand {
         }
         let query = ix.options.getString("audio", false);
         this.onPlayAudio(controller, query ?? "").then((response) => {
-            if (response) {
+            if (response.result) {
                 ix.reply({
-                    embeds: [response],
+                    embeds: [response.embed],
                     flags: MessageFlags.Ephemeral
                 });
             } else {
