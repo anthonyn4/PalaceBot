@@ -77,8 +77,7 @@ export class JoinCommand extends BaseCommand {
                     this.client.bot.user?.setActivity();
                     break;
             }
-            console.log("new audio state 🎧", newState);
-
+            console.log("new audio state 🎧", newState.status);
         });
 
         connection.subscribe(player);

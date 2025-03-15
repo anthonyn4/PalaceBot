@@ -107,7 +107,7 @@ export class CommandExecutor {
         }
 
         command.message = message;
-        if (!command.args) command.args = args;
+        if (command.args.length == 0) command.args = args;
         command.execute();
     }
 }
