@@ -1,12 +1,13 @@
 require('dotenv').config()
 
 const { createAudioResource, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
+const ytdl = require("@distube/ytdl-core");
 const playDL = require('play-dl');
 const { getLyrics } = require('genius-lyrics-api');
 
 const { connect } = require('./connect')
 const { queue, addSong } = require('./queue')
-const { parse, getRandomInt, splitText } = require('./utils');
+const { parse, splitText } = require('./utils');
 
 const YT_VIDEO = {youtube : 'video'}
 const YT_PLAYLIST = {youtube : 'playlist'}
@@ -21,7 +22,7 @@ const SC_ALBUM = {soundcloud : 'albums'}
  */
 async function validateRequest(message) {
     const serverQueue = queue.get(message.guild.id);
-    const status = serverQueue?.player.state.status; 
+    const status = serverQueue?.player.state.status;
     //check the last argument to see if it is a valid time to seek to
     //let timeToSeek = parse(args[args.length-1]);
 
@@ -82,7 +83,7 @@ async function validateRequest(message) {
             })
             searchMsg.delete();
             if (search.length == 0) {
-               return message.channel.send(`❌ No results found for  '${request}'  😢`);
+                return message.channel.send(`❌ No results found for  '${request}'  😢`);
             } else {
                 if (search[0].type == 'track' || search[0].type == 'video') {
                     song = {
@@ -178,7 +179,7 @@ async function validateRequest(message) {
         }
     } catch (e) {
         console.error(e);
-        return message.channel.send(`❌ Age restricted content. Please try a different search.`);
+        return message.channel.send(`❌ An error occurred while trying to play that resource. \`\`${e.message}\`\` `);
     }
 }
 
@@ -223,57 +224,67 @@ async function play(message, song) {
     //     serverQueue.timeoutID = undefined;
     // } 
 
-    let streamObject = {
+    let source = {
         stream: null
     };
 
     try {
         if (song.source == 'yt' && song.seek > 0) {  //only yt songs can be seeked, but there are songs from various sources in the playlist
-            //console.log(`Seeked ${song.seek} seconds into ${song.title}.`);
-            streamObject = await playDL.stream(song.url, { seek: song.seek, discordPlayerCompatibility: true });
+            console.log(`Seeked ${song.seek} seconds into ${song.title}.`);
+            //source = await playDL.stream(song.url, { seek: song.seek, discordPlayerCompatibility: true });
+            source.stream = ytdl(song.url, {begin: song.seek, filter : 'audioonly', dlChunkSize: 0})
         } else if (song.source == 'discord') {
-            streamObject.stream = song.url;
+            source.stream = song.url;
         } else {
-            streamObject = await playDL.stream(song.url, {discordPlayerCompatibility: true}); //MUST be set to true or yt links will get stuck in buffering.
+            //source = await playDL.stream(song.url, { discordPlayerCompatibility: true }); //MUST be set to true or yt links will get stuck in buffering.
+            source.stream = ytdl(song.url,  {
+                filter: "audioonly",
+                highWaterMark: 1 << 30,
+                liveBuffer: 1 << 30,
+                dlChunkSize: 0,
+                quality: "highestaudio",
+            })
         }
-        serverQueue.resource = createAudioResource(streamObject.stream, {
-            inputType: streamObject.stream.type,
-            inlineVolume: true
+        serverQueue.resource = createAudioResource(source.stream, {
+            //inputType: source.stream.type,
+            //inlineVolume: true
         });
-        //console.log(serverQueue.resource)
+        //console.log(`The resource playing is: ${serverQueue.resource}`)
+         //Sets the volume relative to the input stream - i.e. 1 is normal, 0.5 is half, 2 is double.
+        //serverQueue.resource.volume.setVolume(serverQueue.volume / 100);
+
+        //console.log(`Attempting to play ${song.title}...`);
+
+    
+        serverQueue.player.play(serverQueue.resource);
+        serverQueue.lastPlayed = song;
+
+        // serverQueue.player.on('error', error => {
+        //    console.error(`Error: ${error} with resource ${song.title}`);
+        // });
+
+        serverQueue.player.once(AudioPlayerStatus.Idle, () => {
+            if (serverQueue.loop && serverQueue.keep) {    //the loop is on and the song is flagged to be kept
+                serverQueue.songs.push(serverQueue.songs.shift());
+            } else {
+                serverQueue.songs.shift(); //remove first song
+                if (serverQueue.loop === true) {
+                    serverQueue.keep = true;    //reset keep flag after skipping in a loop
+                }
+            }
+            play(message, serverQueue.songs[0]); //play the next song in the queue
+        })
+        printPlayMessage(message, song);
+        //setInterval(() => console.log(serverQueue.player.state.status), 5000)
     } catch (e) {
         const s = serverQueue.songs.splice(0, 1); //remove the song from the queue 
         console.error(`Error playing '${s[0].title}': ${e.message}`);
-        //return message.channel.send(`❌ Something went wrong trying to play \*\*${song.title}\*\*, please try a different song.`);
-        message.channel.send(`❌ \*\*${s[0].title}\*\* is age restricted content.`); //find a way to catch and display different errors in a user-friendly way
+        message.channel.send(` ❌ \`\`${e.message} \`\` `) //Something went wrong trying to play \*\*${song.title}\*\*, please try a different song.`);
+        //message.channel.send(`❌ \*\*${s[0].title}\*\* is age restricted content.`); //find a way to catch and display different errors in a user-friendly way
         if (serverQueue.songs.length > 1) {
-            return play(message, serverQueue.songs[0]);
+            play(message, serverQueue.songs[0]);
         }
     }
-
-    //Sets the volume relative to the input stream - i.e. 1 is normal, 0.5 is half, 2 is double.
-    serverQueue.resource.volume.setVolume(serverQueue.volume / 100);
-
-    serverQueue.connection.subscribe(serverQueue.player);
-    serverQueue.player.play(serverQueue.resource);
-    serverQueue.lastPlayed = song;
-
-    serverQueue.player.once('error', error => {
-        console.error(`Error with resource '${song.title}': ${error}`);
-    });
-    serverQueue.player.once(AudioPlayerStatus.Idle, () => {
-        if (serverQueue.loop && serverQueue.keep) {    //the loop is on and the song is flagged to be kept
-            serverQueue.songs.push(serverQueue.songs.shift());
-        } else {
-            serverQueue.songs.shift(); //remove first song
-            if (serverQueue.loop === true) {
-                serverQueue.keep = true;    //reset keep flag after skipping in a loop
-            }
-        }
-        play(message, serverQueue.songs[0]); //play the next song in the queue
-    })
-    //setInterval(() => console.log(serverQueue.player.state.status), 5000)
-    printPlayMessage(message, song);
 }
 
 
@@ -405,7 +416,7 @@ async function getDataFromSpotify(request, type) {
         })
         console.log(`Fetched ${searchRequests.length} videos from "${tracks.name}"`)
     }
-    return await convertPlaylist(searchRequests);
+    return convertPlaylist(searchRequests);
 }
 
 /**
