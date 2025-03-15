@@ -235,8 +235,9 @@ async function play(message, song) {
             source.stream = ytdl(song.url, {begin: song.seek, filter : 'audioonly', dlChunkSize: 0})
         } else if (song.source == 'discord') {
             source.stream = song.url;
+        } else if (song.source == 'sc') {
+            source = await playDL.stream(song.url, { discordPlayerCompatibility: true }); //MUST be set to true or yt links will get stuck in buffering.
         } else {
-            //source = await playDL.stream(song.url, { discordPlayerCompatibility: true }); //MUST be set to true or yt links will get stuck in buffering.
             source.stream = ytdl(song.url,  {
                 filter: "audioonly",
                 highWaterMark: 1 << 30,
@@ -387,6 +388,7 @@ async function getDataFromYoutube(request, type) {
             songs.push(song)
         })
     }
+    //console.log(songs)
     return songs;
 }
 
