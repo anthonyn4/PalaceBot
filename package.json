@@ -11,12 +11,13 @@
   "dependencies": {
     "@discordjs/opus": "github:discordjs/opus",
     "@discordjs/voice": "^0.16.1",
+    "@distube/ytdl-core": "^4.15.9",
     "discord-speech-recognition": "^3.4.1",
     "discord.js": "^14.12.1",
     "dotenv": "^16.4.5",
     "ffmpeg-static": "^5.2.0",
     "genius-lyrics-api": "^3.2.0",
     "libsodium-wrappers": "^0.7.13",
-    "play-dl": "^1.9.7"
+    "play-dl": "github:Yoduh/play-dl-test"
   }
 }
