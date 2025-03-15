@@ -21,6 +21,7 @@ export class HistoryCommand extends BaseCommand {
         embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
 
         let fields: EmbedField[] = [];
+        controller.audioHistory.reverse();
         controller.audioHistory.forEach((details) => {
             fields.push({ name: details.title, value: StringUtil.formatSeconds(details.durationInSec), inline: false });
         });
