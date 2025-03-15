@@ -4,8 +4,6 @@ import { BaseCommand } from "./BaseCommand";
 export class SkipCommand extends BaseCommand {
 
     public execute() {
-        if (this.args.length == 0) return;
-
         const guild = this.message!.guild;
         const voice = this.message!.member?.voice;
         if (!guild || !voice) return;
