@@ -13,6 +13,7 @@ export class VoiceEvent extends BaseEvent {
     public execute() {
 
         if (this.message.error) {
+            if (this.message.error.message.match(/Google speech api error/)) return;
             console.error(`voice processing error [${this.message.error.name}]`, this.message.error);
             return;
         }
