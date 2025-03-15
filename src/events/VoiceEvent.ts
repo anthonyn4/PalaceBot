@@ -19,7 +19,9 @@ export class VoiceEvent extends BaseEvent {
 
         let text = this.message.content;
         if (!text || !process.env.CMD_VOICE_TRIGGER || !text.startsWith(process.env.CMD_VOICE_TRIGGER)) return;
-        text = text.slice(process.env.CMD_VOICE_TRIGGER.length);
+        text = text.slice(process.env.CMD_VOICE_TRIGGER.length).toLowerCase().trim();
+
+        console.log(`received voice command ${text} 🤖`);
 
         CommandExecutor.process(this.client, this.message, text);
     }
