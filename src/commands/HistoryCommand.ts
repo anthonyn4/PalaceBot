@@ -1,7 +1,7 @@
 import { ChatInputCommandInteraction, EmbedField, GuildMember, InteractionContextType, MessageFlags, SlashCommandBuilder } from "discord.js";
 import { StringUtil } from "../util/StringUtil";
 import { BaseCommand } from "./BaseCommand";
-import { AudioController } from "src/AudioController";
+import { AudioController } from "../AudioController";
 
 export class HistoryCommand extends BaseCommand {
     public execute(): void {

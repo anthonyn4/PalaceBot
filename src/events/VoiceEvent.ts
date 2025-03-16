@@ -1,10 +1,10 @@
-import { createAudioResource } from "@discordjs/voice";
+import { AudioPlayerStatus, createAudioResource } from "@discordjs/voice";
 import { VoiceMessage } from "discord-speech-recognition";
+import { join } from "path";
+import { createReadStream } from "fs";
+import { CommandExecutor } from "../commands";
 import { BaseEvent } from "./BaseEvent";
 import { DiscordClient } from "../DiscordClient";
-import { CommandExecutor } from "../commands";
-import { createReadStream } from "fs";
-import { join } from "path";
 
 export class VoiceEvent extends BaseEvent {
 
@@ -40,7 +40,7 @@ export class VoiceEvent extends BaseEvent {
         console.log(`received voice command '${text}' 🤖`);
 
         let delay = 0;
-        if (controller.audioPlayer) {
+        if (controller.audioPlayer && controller.audioPlayer.state.status != AudioPlayerStatus.Playing) {
             let path = join(__dirname, "../resources/pop.ogg");
             let sound = createAudioResource(createReadStream(path));
             // duration in milliseconds

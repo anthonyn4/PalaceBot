@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, GuildMember, InteractionContextType, MessageFlags, SlashCommandBuilder } from "discord.js";
 import { BaseCommand } from "./BaseCommand";
-import { AudioController } from "src/AudioController";
+import { AudioController } from "../AudioController";
 
 export class LoopCommand extends BaseCommand {
     public execute() {

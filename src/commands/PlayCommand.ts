@@ -1,10 +1,10 @@
 import { ChatInputCommandInteraction, GuildMember, InteractionContextType, managerToFetchingStrategyOptions, Message, MessageFlags, SlashCommandBuilder, SlashCommandStringOption } from "discord.js";
-import { BaseCommand } from "./BaseCommand";
-import { JoinCommand } from "./JoinCommand";
+import play, { SoundCloudTrack } from 'play-dl';
 import { StringUtil } from "../util/StringUtil";
 import { AudioDetails } from "../AudioDetails";
 import { AudioController } from "../AudioController";
-import play, { SoundCloudTrack } from 'play-dl';
+import { BaseCommand } from "./BaseCommand";
+import { JoinCommand } from "./JoinCommand";
 
 export class PlayCommand extends BaseCommand {
 

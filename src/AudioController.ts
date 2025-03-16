@@ -1,7 +1,7 @@
 import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, AudioResource, createAudioResource, VoiceConnection } from "@discordjs/voice";
-import { AudioDetails } from "./AudioDetails";
+import { ActivityType } from "discord.js";
 import play from "play-dl";
-import { ActivityType, LimitedCollection } from "discord.js";
+import { AudioDetails } from "./AudioDetails";
 import { DiscordClient } from "./DiscordClient";
 
 export class AudioController {

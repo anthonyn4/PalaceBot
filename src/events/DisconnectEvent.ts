@@ -1,4 +1,4 @@
-import { AudioController } from "src/AudioController";
+import { AudioController } from "../AudioController";
 import { BaseEvent } from "./BaseEvent";
 
 export class DisconnectEvent extends BaseEvent {

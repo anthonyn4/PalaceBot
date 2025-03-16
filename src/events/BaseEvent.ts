@@ -1,4 +1,4 @@
-import { DiscordClient } from "src/DiscordClient";
+import { DiscordClient } from "../DiscordClient";
 
 export abstract class BaseEvent {
     constructor(client: DiscordClient) {
