@@ -48,7 +48,7 @@ export class CommandExecutor {
             case "connect":
             case "come":
             case "cum":
-            case "join":
+            case "join": // slash command
             case "j":
                 return new JoinCommand(client);
             case "chap": // misheard word
@@ -56,29 +56,30 @@ export class CommandExecutor {
             case "sharply": // misheard word
             case "playing": // mishead word
             case "played": // mishead word
-            case "play":
+            case "play": // slash command
+            case "resume":
             case "p":
                 return new PlayCommand(client);
-            case "pause":
+            case "pause": // slash command
                 return new PauseCommand(client);
-            case "stop":
+            case "stop": // slash command
                 return new StopCommand(client);
             case "next":
-            case "skip":
+            case "skip": // slash command
             case "thank you next":
                 return new SkipCommand(client);
             case "louder":
             case "quieter":
             case "turn":
-            case "volume":
+            case "volume": // slash command
                 return new VolumeCommand(client);
-            case "replay":
+            case "replay": // slash command
             case "again": {
                 let command = new LoopCommand(client);
                 command.args = ["once"];
                 return command;
             }
-            case "loop":
+            case "loop": // slash command
             case "repeat":
                 return new LoopCommand(client);
             case "quit":
@@ -87,14 +88,14 @@ export class CommandExecutor {
             case "neck yourself":
             case "end yourself":
                 return new QuitCommand(client);
-            case "disconnect":
+            case "disconnect": // slash command
             case "ff":
                 return new DisconnectCommand(client);
-            case "history":
+            case "history": // slash command
                 return new HistoryCommand(client);
-            case "queue":
+            case "queue": // slash command
                 return new QueueCommand(client);
-            case "help":
+            case "help": // slash command
             case "commands":
                 return new HelpCommand(client);
             default:

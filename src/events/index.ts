@@ -3,7 +3,7 @@ import { addSpeechEvent, resolveSpeechWithWitai, SpeechOptions, VoiceMessage } f
 import { VoiceEvent } from "./VoiceEvent";
 import { ReadyEvent } from "./ReadyEvent";
 import { MessageEvent } from "./MessageEvent";
-import { DisconnectEvent } from "./DisconnectEvent";
+import { ShutDownEvent } from "./ShutDownEvent";
 import { DiscordClient } from "../DiscordClient";
 import { InteractionCreateEvent } from "./InteractionCreateEvent";
 
@@ -34,7 +34,7 @@ export class EventManager {
         addSpeechEvent(client.bot, speechOptions);
 
         client.bot.once("ready", () => new ReadyEvent(client).execute());
-        client.bot.once("shardDisconnect", () => new DisconnectEvent(client).execute());
+        client.bot.once("shardDisconnect", () => new ShutDownEvent(client).execute());
         client.bot.on("messageCreate", (message: Message) => new MessageEvent(client, message).execute());
         client.bot.on("speech", (message: VoiceMessage) => new VoiceEvent(client, message).execute());
         client.bot.on("interactionCreate", (ix) => new InteractionCreateEvent(client, ix).execute());

@@ -16,7 +16,7 @@ export class QuitCommand extends BaseCommand {
 
         let path = join(__dirname, "../resources/classic_hurt.ogg");
         let sound = createAudioResource(createReadStream(path));
-        let delay = sound.playbackDuration + 200;
+        let delay = sound.playbackDuration + 3000;
         controller.audioPlayer.play(sound);
 
         setTimeout(() => {
