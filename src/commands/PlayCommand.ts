@@ -121,19 +121,22 @@ export class PlayCommand extends BaseCommand {
         if (controller.audioResource && !controller.audioResource.ended) {
             controller.audioQueue.push(details);
 
+            // regenerate footer after queue is updated
             embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
-            embed.setTitle(`🎶 Found on ${details.source}`);
-            embed.setDescription(`[${details.title}](${details.url}) added to the queue ⏳`);
-            embed.setAuthor({ name: StringUtil.formatSeconds(details.durationInSec) });
+            embed.setTitle(`[${details.title}](${details.url}) added to the queue ⏳`);
+            embed.setAuthor({ name: `🎶 Found on ${details.source}` });
+            embed.setDescription(StringUtil.formatSeconds(details.durationInSec));
+
             console.log(`added ${details.title} from ${details.source} to th queue ⏳`);
             return { result: true, embed }
         }
 
         embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
         if (await controller.playAudio(details)) {
-            embed.setTitle(`🎶 Playing from ${details.source}`);
-            embed.setDescription(`Now playing [${details.title}](${details.url}) 🎶`);
-            embed.setAuthor({ name: StringUtil.formatSeconds(details.durationInSec) });
+            embed.setTitle(`Now playing [${details.title}](${details.url}) 🎶`);
+            embed.setAuthor({ name: `🎶 Playing from ${details.source}` });
+            embed.setDescription(StringUtil.formatSeconds(details.durationInSec));
+
             console.log(`now playing '${details.title}' from ${details.source} 🎶`);
             return { result: true, embed }
         }
