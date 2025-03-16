@@ -20,14 +20,14 @@ export class VoiceEvent extends BaseEvent {
         }
 
         const activationWord = process.env.CMD_VOICE_TRIGGER;
-        let text = this.message.content;
+        let text = this.message.content?.toLowerCase();
 
         if (!text || !activationWord) return;
         if (!text.startsWith(activationWord)) {
             console.log(`i heard '${text}', must have been the wind 🤫`);
             return;
         }
-        text = text.slice(activationWord.length).toLowerCase().trim();
+        text = text.slice(activationWord.length).trim();
 
         console.log(`received voice command '${text}' 🤖`);
 

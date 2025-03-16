@@ -14,9 +14,9 @@ export class MessageEvent extends BaseEvent {
         if (this.message.author.bot) return;
         if (!this.message.content) return;
 
-        let text: string = this.message.content;
+        let text: string = this.message.content.toLowerCase();
         if (!process.env.CMD_TEXT_PREFIX || !text.startsWith(process.env.CMD_TEXT_PREFIX)) return;
-        text = text.slice(process.env.CMD_TEXT_PREFIX.length).toLowerCase().trim();
+        text = text.slice(process.env.CMD_TEXT_PREFIX.length).trim();
 
         CommandExecutor.process(this.client, this.message, text);
     }
