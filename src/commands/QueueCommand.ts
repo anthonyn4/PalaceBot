@@ -18,6 +18,9 @@ export class QueueCommand extends BaseCommand {
 
     public onQueueHistory(controller: AudioController) {
         const embed = this.getDefaultEmbed();
+        embed.setAuthor({
+            name: "Currently Queued"
+        })
         embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
 
         let fields: EmbedField[] = [];

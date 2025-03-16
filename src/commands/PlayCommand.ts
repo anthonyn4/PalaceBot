@@ -8,6 +8,64 @@ import play, { SoundCloudTrack } from 'play-dl';
 
 export class PlayCommand extends BaseCommand {
 
+    public execute() {
+        const guild = this.message!.guild;
+        const voice = this.message!.member?.voice;
+        if (!guild || !voice) return;
+
+        let controller = this.client.voiceConnections.get(guild.id);
+        // not in a voice channel
+        if (!controller) {
+            // join the current voice channel
+            new JoinCommand(this.client, this.message, []).execute();
+            controller = this.client.voiceConnections.get(guild.id);
+            // still not in a voice channel
+            if (!controller) return;
+        }
+
+        if (voice.id != controller.voiceChannelId) return;
+
+        let query = this.args.join(" ");
+        this.onPlayAudio(controller, query).then((res) => {
+            this.sendEmbed(res.embed);
+        });
+    }
+
+    public static SlashCommand = new SlashCommandBuilder()
+        .setName("play")
+        .setDescription("Plays/ queues a new audio or resumes the current audio")
+        .addStringOption((opt) => {
+            return opt
+                .setName("audio")
+                .setDescription("URL or name of audio to play")
+                .setRequired(false);
+        })
+        .setContexts(InteractionContextType.Guild);
+
+    public interact(ix: ChatInputCommandInteraction): void {
+        if (!(ix.member instanceof GuildMember)) {
+            ix.deferReply();
+            return;
+        }
+        const voice = ix.member.voice;
+        const controller = this.client.voiceConnections.get(ix.guildId!);
+        if (!controller || controller.voiceChannelId != voice.channel?.id) {
+            ix.deferReply();
+            return;
+        }
+        let query = ix.options.getString("audio", false);
+        this.onPlayAudio(controller, query ?? "").then((response) => {
+            if (response.result) {
+                ix.reply({
+                    embeds: [response.embed],
+                    flags: MessageFlags.Ephemeral
+                });
+            } else {
+                ix.deferReply();
+            }
+        });
+    }
+
     /**
      * searches for the audio or playlist on the specified streaming service
      * 
@@ -76,33 +134,11 @@ export class PlayCommand extends BaseCommand {
             embed.setTitle(`🎶 Playing from ${details.source}`);
             embed.setDescription(`Now playing [${details.title}](${details.url}) 🎶`);
             embed.setAuthor({ name: StringUtil.formatSeconds(details.durationInSec) });
+            console.log(`now playing '${details.title}' from ${details.source} 🎶`);
             return { result: true, embed }
         }
 
         return { result: false, embed }
-    }
-
-    public execute() {
-        const guild = this.message!.guild;
-        const voice = this.message!.member?.voice;
-        if (!guild || !voice) return;
-
-        let controller = this.client.voiceConnections.get(guild.id);
-        // not in a voice channel
-        if (!controller) {
-            // join the current voice channel
-            new JoinCommand(this.client, this.message, []).execute();
-            controller = this.client.voiceConnections.get(guild.id);
-            // still not in a voice channel
-            if (!controller) return;
-        }
-
-        if (voice.id != controller.voiceChannelId) return;
-
-        let query = this.args.join(" ");
-        this.onPlayAudio(controller, query).then((res) => {
-            this.sendEmbed(res.embed);
-        });
     }
 
     public async onPlayAudio(controller: AudioController, query: string) {
@@ -154,40 +190,5 @@ export class PlayCommand extends BaseCommand {
         embed = this.getErrorEmbed();
         embed.setDescription(`Failed to find anything named '${query}'`);
         return { result: false, embed };
-    }
-
-    public static SlashCommand = new SlashCommandBuilder()
-        .setName("play")
-        .setDescription("Plays/ queues a new audio or resumes the current audio")
-        .addStringOption((opt) => {
-            return opt
-                .setName("audio")
-                .setDescription("URL or name of audio to play")
-                .setRequired(false);
-        })
-        .setContexts(InteractionContextType.Guild);
-
-    public interact(ix: ChatInputCommandInteraction): void {
-        if (!(ix.member instanceof GuildMember)) {
-            ix.deferReply();
-            return;
-        }
-        const voice = ix.member.voice;
-        const controller = this.client.voiceConnections.get(ix.guildId!);
-        if (!controller || controller.voiceChannelId != voice.channel?.id) {
-            ix.deferReply();
-            return;
-        }
-        let query = ix.options.getString("audio", false);
-        this.onPlayAudio(controller, query ?? "").then((response) => {
-            if (response.result) {
-                ix.reply({
-                    embeds: [response.embed],
-                    flags: MessageFlags.Ephemeral
-                });
-            } else {
-                ix.deferReply();
-            }
-        });
     }
 }

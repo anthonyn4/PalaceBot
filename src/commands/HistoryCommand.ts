@@ -18,6 +18,9 @@ export class HistoryCommand extends BaseCommand {
 
     public getHistoryEmbed(controller: AudioController) {
         const embed = this.getDefaultEmbed();
+        embed.setAuthor({
+            name: "Recent History"
+        })
         embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
 
         let fields: EmbedField[] = [];

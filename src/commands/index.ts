@@ -71,7 +71,8 @@ export class CommandExecutor {
             case "turn":
             case "volume":
                 return new VolumeCommand(client);
-            case "replay": {
+            case "replay":
+            case "again": {
                 let command = new LoopCommand(client);
                 command.args = ["once"];
                 return command;

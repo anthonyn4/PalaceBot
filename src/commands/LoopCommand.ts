@@ -16,6 +16,8 @@ export class LoopCommand extends BaseCommand {
     }
 
     public onToggleLoopAudio(controller: AudioController, once: boolean) {
+        controller.loop = !controller.loop;
+
         const embed = this.getDefaultEmbed();
         embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
 
@@ -26,7 +28,6 @@ export class LoopCommand extends BaseCommand {
             return embed;
         }
 
-        controller.loop = !controller.loop;
         embed.setDescription(`🔁 '${controller.currentAudio?.title}' is ${controller.loop ? "now looping" : "no longer looping"}`);
         return embed;
     }
