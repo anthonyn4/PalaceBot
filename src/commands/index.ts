@@ -55,6 +55,7 @@ export class CommandExecutor {
             case "chapley": // misheard word
             case "sharply": // misheard word
             case "playing": // mishead word
+            case "played": // mishead word
             case "play":
             case "p":
                 return new PlayCommand(client);

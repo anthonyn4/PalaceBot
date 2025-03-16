@@ -45,7 +45,15 @@ export class VoiceEvent extends BaseEvent {
             let sound = createAudioResource(createReadStream(path));
             // duration in milliseconds
             delay = sound.playbackDuration + 100;
+
+            let temp = controller.audioResource;
+
             controller.audioPlayer.play(sound);
+            if (temp && !temp.ended) {
+                setTimeout(() => {
+                    controller.audioPlayer.play(temp);
+                }, delay);
+            }
         }
 
         let runnable = () => CommandExecutor.process(this.client, this.message, text);

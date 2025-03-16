@@ -115,29 +115,29 @@ export class PlayCommand extends BaseCommand {
             }
         }
 
-        // embed.setURL(url.href);
-
         // audio resource exists and hasn't ended (being paused does not mean ended)
         if (controller.audioResource && !controller.audioResource.ended) {
             controller.audioQueue.push(details);
 
             // regenerate footer after queue is updated
             embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
-            embed.setTitle(`[${details.title}](${details.url}) added to the queue ⏳`);
+            embed.setTitle(`${details.title} added to the queue ⏳`);
+            embed.setURL(details.url.href);
             embed.setAuthor({ name: `🎶 Found on ${details.source}` });
             embed.setDescription(StringUtil.formatSeconds(details.durationInSec));
 
-            console.log(`added ${details.title} from ${details.source} to th queue ⏳`);
+            console.log(`added ${details.title} from ${details.source} to th queue ⏳\r\n`);
             return { result: true, embed }
         }
 
         embed.setFooter({ text: `${controller.audioQueue.length} songs queued | ${controller.audioHistory.length} songs played | 🔁 ${controller.loop ? "ON" : "OFF"} | ⏩ ${controller.autoplay ? "ON" : "OFF"}` });
         if (await controller.playAudio(details)) {
-            embed.setTitle(`Now playing [${details.title}](${details.url}) 🎶`);
+            embed.setTitle(`Now playing ${details.title} 🎶`);
+            embed.setURL(details.url.href);
             embed.setAuthor({ name: `🎶 Playing from ${details.source}` });
             embed.setDescription(StringUtil.formatSeconds(details.durationInSec));
 
-            console.log(`now playing '${details.title}' from ${details.source} 🎶`);
+            console.log(`now playing '${details.title}' from ${details.source} 🎶\r\n`);
             return { result: true, embed }
         }
 
