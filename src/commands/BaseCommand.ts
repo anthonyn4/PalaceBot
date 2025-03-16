@@ -29,6 +29,8 @@ export abstract class BaseCommand {
     public sendEmbed(embed: EmbedBuilder) {
         if (this.message instanceof Message) {
             this.message.reply({ embeds: [embed] });
+        } else if (this.message instanceof VoiceMessage) {
+            this.message.channel.send({ embeds: [embed] });
         }
 
         return undefined;

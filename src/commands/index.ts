@@ -13,6 +13,7 @@ import { HistoryCommand } from "./HistoryCommand";
 import { HelpCommand } from "./HelpCommand";
 import { QueueCommand } from "./QueueCommand";
 import { StopCommand } from "./StopCommand";
+import { ResponseCommand } from "./ResponseCommand";
 
 export const Commands: SharedSlashCommand[] = [
     HelpCommand.SlashCommand,
@@ -34,12 +35,26 @@ export class CommandExecutor {
 
     public static getCommand(client: DiscordClient, commandName: string) {
         switch (commandName) {
+            case "keep barking":
+            case "bark": {
+                let command = new ResponseCommand(client);
+                if (commandName.startsWith("keep")) {
+                    command.args = ["bark", "loop"];
+                } else {
+                    command.args = ["bark"];
+                }
+                return command;
+            }
             case "connect":
             case "come":
             case "cum":
             case "join":
             case "j":
                 return new JoinCommand(client);
+            case "chap": // misheard word
+            case "chapley": // misheard word
+            case "sharply": // misheard word
+            case "playing": // mishead word
             case "play":
             case "p":
                 return new PlayCommand(client);
@@ -56,10 +71,11 @@ export class CommandExecutor {
             case "turn":
             case "volume":
                 return new VolumeCommand(client);
-            case "replay":
+            case "replay": {
                 let command = new LoopCommand(client);
                 command.args = ["once"];
                 return command;
+            }
             case "loop":
             case "repeat":
                 return new LoopCommand(client);
@@ -113,7 +129,5 @@ export class CommandExecutor {
         command.message = message;
         if (command.args.length == 0) command.args = args;
         command.execute();
-
-        console.log();
     }
 }

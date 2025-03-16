@@ -1,4 +1,7 @@
 import { ChatInputCommandInteraction, InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { createAudioResource } from "@discordjs/voice";
+import { join } from "path";
+import { createReadStream } from "fs";
 import { BaseCommand } from "./BaseCommand";
 
 export class QuitCommand extends BaseCommand {
@@ -11,7 +14,14 @@ export class QuitCommand extends BaseCommand {
         if (!controller) return;
         if (voice.id != controller.voiceChannelId) return;
 
-        this.client.bot.destroy();
+        let path = join(__dirname, "../resources/classic_hurt.ogg");
+        let sound = createAudioResource(createReadStream(path));
+        let delay = sound.playbackDuration + 200;
+        controller.audioPlayer.play(sound);
+
+        setTimeout(() => {
+            this.client.bot.destroy();
+        }, delay);
     }
 
     public static SlashCommand = new SlashCommandBuilder()

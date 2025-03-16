@@ -1,7 +1,8 @@
-import { AudioPlayer, AudioPlayerStatus, AudioResource, createAudioResource, VoiceConnection } from "@discordjs/voice";
+import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, AudioResource, createAudioResource, VoiceConnection } from "@discordjs/voice";
 import { AudioDetails } from "./AudioDetails";
 import play from "play-dl";
-import { LimitedCollection } from "discord.js";
+import { ActivityType, LimitedCollection } from "discord.js";
+import { DiscordClient } from "./DiscordClient";
 
 export class AudioController {
 
@@ -9,6 +10,50 @@ export class AudioController {
         this.voiceChannelId = voiceChannelId;
         this.voiceConnection = voiceConnection;
         this.audioPlayer = audioPlayer;
+    }
+
+    public async onAudioStateChanged(client: DiscordClient, oldState: AudioPlayerState, newState: AudioPlayerState) {
+        switch (newState.status) {
+            case AudioPlayerStatus.Buffering:
+                return; // don't log, or do anything
+
+            case AudioPlayerStatus.Idle:
+                // audio was playing
+                if (this.currentAudio != null) {
+                    // looping is enabled
+                    if (this.loop) {
+                        // add the audio to the queue again
+                        this.audioQueue.push(this.currentAudio);
+                    }
+
+                    // whatever is playing will become the previous song before progressing to the next queue
+                    this.previousAudio = this.currentAudio;
+                }
+
+                // go to the next audio if available
+                if (this.audioQueue.length > 0) {
+                    if (await this.playNextAudio()) return;
+                }
+
+                // nothing to play. reset activity
+                client.bot.user?.setActivity();
+                break;
+            case AudioPlayerStatus.Playing:
+                if (this.currentAudio) {
+                    client.bot.user?.setActivity({
+                        name: this.currentAudio.title,
+                        type: ActivityType.Listening,
+                        url: this.currentAudio.url.href
+                    });
+                    break;
+                }
+            // if no currentAudio is present, fall thru the switch statement and reset the activity
+            case AudioPlayerStatus.Paused:
+                client.bot.user?.setActivity();
+                break;
+        }
+
+        // console.log(`new audio state '${newState.status}' 🎧`);
     }
 
     public setVolume(volume: number) {

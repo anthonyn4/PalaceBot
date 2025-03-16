@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, GuildMember, InteractionContextType, SlashCommandBuilder } from "discord.js";
 import { BaseCommand } from "./BaseCommand";
+import { AudioController } from "../AudioController";
 
 export class StopCommand extends BaseCommand {
     public execute() {
@@ -11,7 +12,12 @@ export class StopCommand extends BaseCommand {
         if (!controller) return;
         if (voice.id != controller.voiceChannelId) return;
 
+        this.onStop(controller);
+    }
+
+    public onStop(controller: AudioController) {
         controller.playNextAudio();
+        controller.loop = false;
     }
 
     public static SlashCommand = new SlashCommandBuilder()
@@ -31,6 +37,6 @@ export class StopCommand extends BaseCommand {
             return;
         }
 
-        controller.audioPlayer.stop();
+        this.onStop(controller);
     }
 }

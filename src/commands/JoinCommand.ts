@@ -1,5 +1,7 @@
-import { ActivityType, ChatInputCommandInteraction, Guild, GuildMember, InteractionContextType, MessageFlags, SlashCommandBuilder, VoiceState } from "discord.js";
-import { AudioPlayerState, AudioPlayerStatus, createAudioPlayer, joinVoiceChannel, NoSubscriberBehavior } from "@discordjs/voice";
+import { ChatInputCommandInteraction, Guild, GuildMember, InteractionContextType, MessageFlags, SlashCommandBuilder, VoiceState } from "discord.js";
+import { createAudioPlayer, createAudioResource, joinVoiceChannel, NoSubscriberBehavior } from "@discordjs/voice";
+import { createReadStream } from "fs";
+import { join } from "path";
 import { BaseCommand } from "./BaseCommand";
 import { AudioController } from "../AudioController";
 
@@ -33,56 +35,16 @@ export class JoinCommand extends BaseCommand {
             behaviors: {
                 noSubscriber: NoSubscriberBehavior.Pause, // default pause
                 maxMissedFrames: 0 // default 5
-            }
+            },
         });
-
         const controller = new AudioController(voice.id, connection, player);
 
-        player.on("stateChange", async (oldState: AudioPlayerState, newState: AudioPlayerState) => {
-            switch (newState.status) {
-                case AudioPlayerStatus.Buffering:
-                    return; // don't log, or do anything
-
-                case AudioPlayerStatus.Idle:
-                    // audio was playing
-                    if (controller.currentAudio != null) {
-                        // looping is enabled
-                        if (controller.loop) {
-                            // add the audio to the queue again
-                            controller.audioQueue.push(controller.currentAudio);
-                        }
-
-                        // whatever is playing will become the previous song before progressing to the next queue
-                        controller.previousAudio = controller.currentAudio;
-                    }
-
-                    // go to the next audio if available
-                    if (controller.audioQueue.length > 0) {
-                        if (await controller.playNextAudio()) return;
-                    }
-
-                    // nothing to play. reset activity
-                    this.client.bot.user?.setActivity();
-                    break;
-                case AudioPlayerStatus.Playing:
-                    if (controller.currentAudio) {
-                        this.client.bot.user?.setActivity({
-                            name: controller.currentAudio.title,
-                            type: ActivityType.Listening,
-                            url: controller.currentAudio.url.href
-                        });
-                        break;
-                    }
-                // if no currentAudio is present, fall thru the switch statement and reset the activity
-                case AudioPlayerStatus.Paused:
-                    this.client.bot.user?.setActivity();
-                    break;
-            }
-
-            // console.log(`new audio state '${newState.status}' 🎧`);
-        });
-
+        player.on("stateChange", async (oldState, newState) => controller.onAudioStateChanged(this.client, oldState, newState));
         connection.subscribe(player);
+
+        // play a sound to indicate the bot is ready
+        let resource = createAudioResource(createReadStream(join(__dirname, "../resources/open.ogg")));
+        player.play(resource);
 
         this.client.voiceConnections.set(guild.id, controller);
     }

@@ -3,6 +3,8 @@ import { VoiceMessage } from "discord-speech-recognition";
 import { BaseEvent } from "./BaseEvent";
 import { DiscordClient } from "../DiscordClient";
 import { CommandExecutor } from "../commands";
+import { createReadStream } from "fs";
+import { join } from "path";
 
 export class VoiceEvent extends BaseEvent {
 
@@ -12,10 +14,15 @@ export class VoiceEvent extends BaseEvent {
     }
 
     public execute() {
-
         if (this.message.error) {
             if (this.message.error.message.match(/Google speech api error/)) return;
             console.error(`voice processing error [${this.message.error.name}]`, this.message.error);
+            return;
+        }
+
+        let controller = this.client.voiceConnections.get(this.message.guild.id)
+        if (!controller) {
+            console.log("no audio controller found for voice controls 🤔");
             return;
         }
 
@@ -28,25 +35,16 @@ export class VoiceEvent extends BaseEvent {
             return;
         }
         text = text.slice(activationWord.length).trim();
+        if (!text) return; // voice activation with no command
 
         console.log(`received voice command '${text}' 🤖`);
 
-        let controller = this.client.voiceConnections.get(this.message.guild.id)
-        if (!controller) {
-            console.log("no audio controller found for voice controls 🤔");
-            return;
-        }
-
         let delay = 0;
         if (controller.audioPlayer) {
-            let sound = createAudioResource("./down.mp3", {
-                inlineVolume: true
-            });
+            let path = join(__dirname, "../resources/pop.ogg");
+            let sound = createAudioResource(createReadStream(path));
             // duration in milliseconds
             delay = sound.playbackDuration + 100;
-            // volume may be adjusted for audios.
-            // reset here as it will be automatically adjusted later
-            controller.setVolume(100);
             controller.audioPlayer.play(sound);
         }
 
