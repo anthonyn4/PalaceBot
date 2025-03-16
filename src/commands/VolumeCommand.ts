@@ -19,10 +19,10 @@ export class VolumeCommand extends BaseCommand {
         let embed = this.getDefaultEmbed();
 
         let volume = controller.volume;
-        if (this.args.length == 0) {
+        if (args.length == 0) {
             embed.setDescription(`Current volume is ${controller.volume}%`);
-        } else if (isNaN(parseInt(this.args[0]))) {
-            switch (this.args[0]) {
+        } else if (isNaN(parseInt(args[0]))) {
+            switch (args[0]) {
                 case "louder":
                     volume = volume + 10;
                     embed.setDescription(`Volume increased to ${controller.volume}%`);
@@ -32,13 +32,13 @@ export class VolumeCommand extends BaseCommand {
                     embed.setDescription(`Volume decreased to ${controller.volume}%`);
                     break;
                 case "turn":
-                    if (this.args.length > 1) {
+                    if (args.length > 1) {
                         let old = volume;
-                        if (this.args[1] == "up") volume = 100;
-                        else if (this.args[1] == "down") volume = 0;
+                        if (args[1] == "up") volume = 100;
+                        else if (args[1] == "down") volume = 0;
                         else {
                             embed = this.getErrorEmbed();
-                            embed.setDescription(`Invalid option '${this.args[1]}'`);
+                            embed.setDescription(`Invalid option '${args[1]}'`);
                             return embed;
                         }
 
@@ -50,9 +50,9 @@ export class VolumeCommand extends BaseCommand {
                     embed.setDescription("Please enter a value between 0 and 100");
                     return embed;
             }
-        } else {
-            volume = parseInt(this.args[0]);
         }
+
+        volume = parseInt(args[0]);
         volume = Math.max(0, Math.min(100, volume));
         controller.setVolume(volume);
         embed.setDescription(`Volume set to ${volume}%`);

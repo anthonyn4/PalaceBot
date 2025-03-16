@@ -67,6 +67,7 @@ export class PlayCommand extends BaseCommand {
             embed.setTitle(`🎶 Found on ${details.source}`);
             embed.setDescription(`[${details.title}](${details.url}) added to the queue ⏳`);
             embed.setAuthor({ name: StringUtil.formatSeconds(details.durationInSec) });
+            console.log(`added ${details.title} from ${details.source} to th queue ⏳`);
             return { result: true, embed }
         }
 

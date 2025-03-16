@@ -1,5 +1,5 @@
 import { Message, User } from "discord.js";
-import { addSpeechEvent, VoiceMessage } from "discord-speech-recognition";
+import { addSpeechEvent, resolveSpeechWithWitai, SpeechOptions, VoiceMessage } from "discord-speech-recognition";
 import { VoiceEvent } from "./VoiceEvent";
 import { ReadyEvent } from "./ReadyEvent";
 import { MessageEvent } from "./MessageEvent";
@@ -10,15 +10,28 @@ import { InteractionCreateEvent } from "./InteractionCreateEvent";
 export class EventManager {
 
     public static registerEvents(client: DiscordClient) {
-        addSpeechEvent(client.bot, {
+
+        const WITAI_TOKEN = process.env.WITAI_SERVER_TOKEN;
+
+        const speechOptions: SpeechOptions = {
             profanityFilter: false,
             // duration is assumed to be in seconds (https://discordsr.netlify.app/classes/voicemessage)
             // reduce the minimum value so that short voice inputs can be processed
-            minimalVoiceMessageDuration: 0.5,
+            minimalVoiceMessageDuration: 0,
             shouldProcessSpeech: (user: User) => {
                 return !user.bot;
             }
-        });
+        };
+
+        if (WITAI_TOKEN) {
+            speechOptions.speechRecognition = (audioBuffer, options) => {
+                return resolveSpeechWithWitai(audioBuffer, {
+                    key: "VZXRGXJ5QIZSZE6GZ5I44W2YU5OJYB42"
+                });
+            };
+        }
+
+        addSpeechEvent(client.bot, speechOptions);
 
         client.bot.once("ready", () => new ReadyEvent(client).execute());
         client.bot.once("shardDisconnect", () => new DisconnectEvent(client).execute());

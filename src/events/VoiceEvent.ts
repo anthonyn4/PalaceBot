@@ -1,3 +1,4 @@
+import { createAudioResource } from "@discordjs/voice";
 import { VoiceMessage } from "discord-speech-recognition";
 import { BaseEvent } from "./BaseEvent";
 import { DiscordClient } from "../DiscordClient";
@@ -18,13 +19,40 @@ export class VoiceEvent extends BaseEvent {
             return;
         }
 
+        const activationWord = process.env.CMD_VOICE_TRIGGER;
         let text = this.message.content;
-        if (!text || !process.env.CMD_VOICE_TRIGGER || !text.startsWith(process.env.CMD_VOICE_TRIGGER)) return;
-        text = text.slice(process.env.CMD_VOICE_TRIGGER.length).toLowerCase().trim();
 
-        console.log(`received voice command ${text} 🤖`);
+        if (!text || !activationWord) return;
+        if (!text.startsWith(activationWord)) {
+            console.log(`i heard '${text}', must have been the wind 🤫`);
+            return;
+        }
+        text = text.slice(activationWord.length).toLowerCase().trim();
 
-        CommandExecutor.process(this.client, this.message, text);
+        console.log(`received voice command '${text}' 🤖`);
+
+        let controller = this.client.voiceConnections.get(this.message.guild.id)
+        if (!controller) {
+            console.log("no audio controller found for voice controls 🤔");
+            return;
+        }
+
+        let delay = 0;
+        if (controller.audioPlayer) {
+            let sound = createAudioResource("./down.mp3", {
+                inlineVolume: true
+            });
+            // duration in milliseconds
+            delay = sound.playbackDuration + 100;
+            // volume may be adjusted for audios.
+            // reset here as it will be automatically adjusted later
+            controller.setVolume(100);
+            controller.audioPlayer.play(sound);
+        }
+
+        let runnable = () => CommandExecutor.process(this.client, this.message, text);
+        if (delay) setTimeout(runnable, delay);
+        else runnable();
     }
 
     private message: VoiceMessage;

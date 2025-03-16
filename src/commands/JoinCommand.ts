@@ -31,7 +31,8 @@ export class JoinCommand extends BaseCommand {
 
         const player = createAudioPlayer({
             behaviors: {
-                noSubscriber: NoSubscriberBehavior.Pause,
+                noSubscriber: NoSubscriberBehavior.Pause, // default pause
+                maxMissedFrames: 0 // default 5
             }
         });
 
@@ -77,7 +78,8 @@ export class JoinCommand extends BaseCommand {
                     this.client.bot.user?.setActivity();
                     break;
             }
-            console.log("new audio state 🎧", newState.status);
+
+            // console.log(`new audio state '${newState.status}' 🎧`);
         });
 
         connection.subscribe(player);
@@ -102,9 +104,8 @@ export class JoinCommand extends BaseCommand {
             return;
         }
         if (voice.channel?.id == controller.voiceChannelId) {
-            const embed = this.getDefaultEmbed();
+            const embed = this.getErrorEmbed();
             embed.setDescription("The bot is already in this voice channel");
-            embed.setColor("#ED4245");
             ix.reply({
                 embeds: [embed],
                 flags: MessageFlags.Ephemeral
